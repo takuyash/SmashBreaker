@@ -726,6 +726,17 @@ const keyboardTex = texURL(512, 200, (ctx, w, h) => {
     }
   });
 });
+const shredTex = texURL(128, 64, (ctx, w, h) => {
+  // 透明窓から見える、中に溜まった細切れの紙
+  ctx.fillStyle = '#2a2c31'; ctx.fillRect(0, 0, w, h);
+  for (let i = 0; i < 70; i++) {
+    const x = Math.random() * w, y = h * 0.35 + Math.random() * h * 0.7;
+    ctx.save(); ctx.translate(x, y); ctx.rotate((Math.random() - 0.5) * 1.6);
+    ctx.fillStyle = Math.random() < 0.85 ? '#f2f2ee' : '#cfe0f5';
+    ctx.fillRect(-1.5, -10, 3, 20); ctx.restore();
+  }
+  ctx.fillStyle = 'rgba(180,210,230,0.18)'; ctx.fillRect(0, 0, w, h);
+});
 
 const MAT = {
   paintWhite: M(0xf1f0ea, { snd: 'metal' }),
@@ -756,6 +767,7 @@ const MAT = {
   screenLaptop: M(0xffffff, { tex: laptopTex, emissive: true, snd: 'glass' }),
   screenCRT: M(0xffffff, { tex: crtTex, emissive: true, snd: 'glass' }),
   keyboard: M(0xffffff, { tex: keyboardTex }),
+  shredWindow: M(0xffffff, { tex: shredTex, snd: 'glass' }),
 };
 const MUG_COLORS = [0xf4efe6, 0xe85d5d, 0x4f8ad9, 0xf2c94c, 0x5cc49a, 0x2b2b2b];
 
@@ -880,6 +892,21 @@ function buildMug(it) {
   p = P(it, 0, 0.035, 0, -HALF, 0, 0); addPlate(p, 0.078, 0.078, MAT.coffee, null, { round: true });
   p = P(it, 0.044, 0, 0); addArc(p, 0.03, 0.014, 4, -HALF, HALF, m);
 }
+function buildShredder(it) {
+  // ゴミ箱部分
+  let p = P(it, 0, 0, 0); addBox(p, 0.3, 0.32, 0.22, MAT.dark); p.core = true;
+  p = P(it, 0, -0.03, 0.111); addPlate(p, 0.22, 0.16, MAT.shredWindow);
+  p = P(it, 0, 0.11, 0.111); addPlate(p, 0.08, 0.02, MAT.black);
+  // 上のカッターユニット
+  p = P(it, 0, 0.195, 0); addBox(p, 0.32, 0.07, 0.24, MAT.black);
+  p = P(it, 0, 0.2305, 0, -HALF, 0, 0); addPlate(p, 0.24, 0.014, MAT.dark);
+  p = P(it, 0.12, 0.233, 0.07); addBox(p, 0.04, 0.008, 0.025, MAT.gray);
+  Sp(it, 0.007, MAT.ledBlue, 0.12, 0.236, 0.035);
+  p = P(it, 0, 0.18, -0.12, -HALF, 0, 0); addPlate(p, 0.26, 0.18, MAT.pcb);
+  // 吸い込まれかけの書類
+  p = P(it, 0, 0.29, 0); addPlate(p, 0.19, 0.12, MAT.paper);
+  p = P(it, 0, 0.3, 0.001); addPlate(p, 0.13, 0.012, MAT.redPlastic);
+}
 
 const ITEMS = [
   { id: 'microwave', name: '電子レンジ', price: 25000, hp: 60, mass: 12, snd: 'metal', electric: true, chip: 0.03, build: buildMicrowave },
@@ -891,6 +918,7 @@ const ITEMS = [
   { id: 'printer', name: 'プリンター', price: 20000, hp: 40, mass: 6, snd: 'plastic', electric: true, special: 'ink', chip: 0.03, build: buildPrinter },
   { id: 'fan', name: '扇風機', price: 6000, hp: 18, mass: 3, snd: 'plastic', electric: true, chip: 0.02, build: buildFan },
   { id: 'mug', name: 'マグカップ', price: 1200, hp: 3, mass: 0.35, snd: 'ceramic', special: 'coffee', chip: 0.012, build: buildMug },
+  { id: 'shredder', name: 'シュレッダー', price: 15000, hp: 32, mass: 7, snd: 'plastic', electric: true, special: 'shred', chip: 0.025, build: buildShredder },
 ];
 
 function buildItem(def) {
@@ -1064,6 +1092,20 @@ function spawnPapers(pos, n) {
     b.q.random();
     b.vel.randDir().mul(rand(1, 4)); b.vel.y = rand(1.5, 5);
     b.ang.randDir().mul(rand(2, 8));
+    bodies.push(b);
+  }
+}
+function spawnShreds(pos, n) {
+  for (let i = 0; i < n; i++) {
+    const part = newPart();
+    addPlate(part, 0.007, rand(0.06, 0.14), MAT.paper);
+    worldEl.appendChild(part.el);
+    const b = new Body([{ part, lp: new V(), lq: new Q() }], part.min, part.max, { snd: 'soft', paper: true });
+    b.chip = true; // 床に落ちたらしばらくして消える
+    b.pos.copy(pos).add(_va.randDir().mul(0.12));
+    b.q.random();
+    b.vel.randDir().mul(rand(1.5, 5)); b.vel.y = rand(2, 6);
+    b.ang.randDir().mul(rand(4, 14));
     bodies.push(b);
   }
 }
@@ -1273,6 +1315,12 @@ function shatter(b, imp) {
       grainBurst(center, 150, [[0, 0.66, 0.85], [0.82, 0, 0.48], [0.95, 0.82, 0], [0.1, 0.1, 0.1]], 1, 0.02, 3.5);
       spawnPapers(center, 12);
       break;
+    case 'shred':
+      // 中に溜まっていた細切れの紙が部屋中に舞う
+      spawnShreds(center, 40);
+      spawnPapers(center, 3);
+      grainBurst(center, 220, [[0.96, 0.96, 0.94], [0.92, 0.92, 0.9], [0.8, 0.87, 0.96]], 1, 0.016, 4);
+      break;
     case 'crt':
       spawnChips(center, baseV, MAT.glassClear, 22, 0.05, 5);
       dustBurst(center, null, 30, [0.8, 0.8, 0.85]);
@@ -1429,7 +1477,7 @@ function buildItemBar() {
     const b = document.createElement('button');
     b.className = 'item'; b.dataset.idx = i;
     b.appendChild(makeThumb(d, tsize));
-    b.insertAdjacentHTML('beforeend', `<span class="nm">${d.name}</span><span class="pr">${yenFmt(d.price)}</span><kbd>${i + 1}</kbd>`);
+    b.insertAdjacentHTML('beforeend', `<span class="nm">${d.name}</span><span class="pr">${yenFmt(d.price)}</span>${i < 9 ? `<kbd>${i + 1}</kbd>` : ''}`);
     b.addEventListener('click', () => select(i));
     bar.appendChild(b);
   });
