@@ -2,7 +2,11 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#111111">
 <title>SMASH BREAKER - 家電ぶん投げストレス発散</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -44,7 +48,7 @@
 <div id="reticle"></div>
 
 <div id="bottom">
-  <div id="hint">長押しでパワーを溜めて、離して投げる！</div>
+  <div id="hint"><span class="pc-only">長押しでパワーを溜めて、離して投げる！</span><span class="touch-only">画面を長押しで溜めて、指を離して投げる！</span></div>
   <div id="items"></div>
 </div>
 
@@ -53,10 +57,14 @@
     <h1>SMASH<br>BREAKER</h1>
     <p class="tagline">家電ぶん投げ ストレス発散所</p>
     <ul class="howto">
-      <li><b>マウス長押し</b> でパワーを溜める</li>
-      <li><b>離す</b> とカーソルの位置へ投げる</li>
-      <li><b>1〜9キー</b> で投げる物を切替 / <b>0</b> でランダム</li>
-      <li><b>C</b> で片付け / <b>M</b> で音のON/OFF</li>
+      <li class="pc-only"><b>マウス長押し</b> でパワーを溜める</li>
+      <li class="pc-only"><b>離す</b> とカーソルの位置へ投げる</li>
+      <li class="pc-only"><b>1〜9キー</b> で投げる物を切替 / <b>0</b> でランダム</li>
+      <li class="pc-only"><b>C</b> で片付け / <b>M</b> で音のON/OFF</li>
+      <li class="touch-only"><b>画面を長押し</b> でパワーを溜める</li>
+      <li class="touch-only"><b>指を離す</b> とその位置へ投げる（なぞって狙いを調整）</li>
+      <li class="touch-only"><b>下のアイコン</b> で投げる物を切替（横スクロール）</li>
+      <li class="touch-only"><b>🧹 / 🔊</b> で片付け・音のON/OFF</li>
     </ul>
     <button id="btnStart" class="big-btn" disabled>読み込み中…</button>
     <p class="note">※ 音が出ます</p>

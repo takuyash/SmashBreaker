@@ -359,8 +359,74 @@ body.slowmo #vignette { opacity: 1; }
 .result span { font-size: 12px; opacity: .6; }
 .result b { font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 24px; color: #ffd84a; }
 
+/* ---------- Touch / mobile ---------- */
+html, body {
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+button { touch-action: manipulation; }
+#items { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; touch-action: pan-x; }
+
+/* PC / タッチで説明文を切替 */
+.touch-only { display: none; }
+@media (hover: none) and (pointer: coarse) {
+  .touch-only { display: revert; }
+  .pc-only { display: none; }
+  .item kbd { display: none; }
+  .item:hover { background: #262a33; }
+  .tools button:hover { background: rgba(14, 16, 21, .8); }
+  .tools button { padding: 10px 14px; font-size: 14px; }
+}
+
+/* タッチ時は指で隠れないよう照準を大きく */
+body.touch #reticle { scale: 2; }
+
+/* ノッチ / ホームバー対応 */
+#hud {
+  padding-top: max(14px, env(safe-area-inset-top));
+  padding-left: max(14px, env(safe-area-inset-left));
+  padding-right: max(14px, env(safe-area-inset-right));
+}
+#bottom { bottom: max(10px, env(safe-area-inset-bottom)); }
+
 @media (max-width: 640px) {
-  #hud { padding: 8px; }
+  #hud {
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+  }
+  .card { padding: 22px 18px 18px; }
+  .howto { font-size: 13px; line-height: 1.8; }
+  #combo { top: 120px; }
+}
+
+/* スマホ横持ち（高さが低い） */
+@media (max-height: 500px) {
+  #hud { padding-top: max(6px, env(safe-area-inset-top)); }
+  .panel { padding: 5px 10px; }
+  #yen { font-size: 20px; min-width: 0; }
+  .stress { width: 150px; }
+  .stress .bar { height: 8px; margin-top: 3px; }
+  #stressVal { font-size: 12px; margin-top: 2px; }
+  #hint { display: none; }
+  #items { padding: 5px; gap: 6px; }
+  .item { width: 60px; padding: 3px 3px 4px; }
+  .item .dice { width: 50px; height: 50px; font-size: 30px; }
+  .thumb { width: 50px; height: 50px; }
+  .item .pr { display: none; }
+  .item.active { transform: translateY(-2px); }
+  #combo { top: 60px; }
+  .card { padding: 14px 18px; max-height: calc(100% - 8px); overflow-y: auto; }
+  .card h1 { font-size: 40px; margin: 2px 0 8px; }
+  .tagline { margin-bottom: 8px; font-size: 14px; }
+  .howto { font-size: 12px; line-height: 1.6; margin-bottom: 10px; }
+  .big-btn { font-size: 18px; padding: 8px 32px; }
+  .note { margin-top: 6px; }
+}
+
+@media (max-width: 640px) {
+  #hud { padding-bottom: 8px; }
   .panel { padding: 7px 10px; }
   #yen { font-size: 20px; min-width: 0; }
   .stress { width: 140px; }

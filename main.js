@@ -233,7 +233,9 @@ const viewM = new M4();
 function resize() {
   W = window.innerWidth; H = window.innerHeight;
   DPR = Math.min(window.devicePixelRatio || 1, 2);
-  F = (H / 2) / Math.tan(FOV * Math.PI / 360);
+  // 縦長画面（スマホ縦持ち）では横方向の視野が狭くなりすぎないよう、横 FOV も最低 FOV 度を確保する
+  const t = Math.tan(FOV * Math.PI / 360);
+  F = Math.min((H / 2) / t, (W / 2) / t);
   viewport.style.perspective = F + 'px';
   fxc.width = Math.round(W * DPR); fxc.height = Math.round(H * DPR);
   fx2.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -1418,7 +1420,7 @@ function makeThumb(def, size) {
    ========================================================= */
 function buildItemBar() {
   const bar = $('items');
-  const tsize = window.innerWidth <= 640 ? 56 : 72;
+  const tsize = window.innerHeight <= 500 ? 50 : window.innerWidth <= 640 ? 56 : 72;
   ITEMS.forEach((d, i) => {
     const b = document.createElement('button');
     b.className = 'item'; b.dataset.idx = i;
@@ -1463,6 +1465,8 @@ function setPointer(e) {
 viewport.addEventListener('pointerdown', (e) => {
   if (!started || !$('relief').classList.contains('hidden')) return;
   if (e.pointerType === 'mouse' && e.button !== 0) return;
+  document.body.classList.toggle('touch', e.pointerType !== 'mouse');
+  e.preventDefault();
   setPointer(e);
   Snd.init();
   charging = true; chargeT = 0; power = 0;
@@ -1474,6 +1478,10 @@ window.addEventListener('pointerup', (e) => {
   setPointer(e); updateAim(); doThrow();
 });
 window.addEventListener('pointercancel', () => { charging = false; });
+// スマホ: 長押しでのコンテキストメニュー / ピンチズーム / ダブルタップズームを抑止
+viewport.addEventListener('contextmenu', (e) => e.preventDefault());
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
 let spaceDown = false;
 window.addEventListener('keydown', (e) => {
   if (!started) return;
