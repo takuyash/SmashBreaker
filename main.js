@@ -1110,6 +1110,8 @@ let lastDebrisSnd = 0;
 let started = false;
 let held = null, selected = 0, randomMode = false;
 let charging = false, chargeT = 0, power = 0;
+let touchAim = false;      // タッチ操作中の溜め（短いタップは投げない）
+const TAP_T = 0.2;         // これより短いタッチは「狙いの移動」扱い（秒）
 
 function updateHUD() {
   $('yen').textContent = yenFmt(totalYen);
@@ -1470,14 +1472,24 @@ viewport.addEventListener('pointerdown', (e) => {
   setPointer(e);
   Snd.init();
   charging = true; chargeT = 0; power = 0;
+  touchAim = e.pointerType !== 'mouse';
   try { viewport.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
 });
 window.addEventListener('pointermove', setPointer);
 window.addEventListener('pointerup', (e) => {
   if (!charging) return;
-  setPointer(e); updateAim(); doThrow();
+  setPointer(e); updateAim();
+  // タッチ: 短いタップは狙いの移動だけ / アイテムバーまでスライドでキャンセル
+  if (touchAim && (chargeT < TAP_T || inCancelZone())) { cancelCharge(); return; }
+  doThrow();
 });
-window.addEventListener('pointercancel', () => { charging = false; });
+window.addEventListener('pointercancel', cancelCharge);
+function cancelCharge() { charging = false; power = 0; touchAim = false; }
+function inCancelZone() {
+  if (!touchAim) return false;
+  const bar = $('items');
+  return !!bar && pointer.y > bar.getBoundingClientRect().top - 8;
+}
 // スマホ: 長押しでのコンテキストメニュー / ピンチズーム / ダブルタップズームを抑止
 viewport.addEventListener('contextmenu', (e) => e.preventDefault());
 document.addEventListener('gesturestart', (e) => e.preventDefault());
@@ -1490,7 +1502,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'c' || e.key === 'C') clearAll();
   else if (e.key === 'm' || e.key === 'M') toggleSound();
   else if (e.code === 'Space' && !spaceDown && $('relief').classList.contains('hidden')) {
-    spaceDown = true; charging = true; chargeT = 0; power = 0; e.preventDefault();
+    spaceDown = true; charging = true; chargeT = 0; power = 0; touchAim = false; e.preventDefault();
   }
 });
 window.addEventListener('keyup', (e) => {
@@ -1515,6 +1527,7 @@ window.addEventListener('resize', resize);
    ========================================================= */
 function drawTrajectory(ctx) {
   if (!charging || !held) return;
+  if (touchAim && (chargeT < TAP_T || inCancelZone())) return;
   const o = heldWorldPos(new V());
   const L = launch(o, aimPoint, power);
   const pt = new V(), pr = { x: 0, y: 0, k: 0 };
@@ -1574,9 +1587,15 @@ function frame(now) {
     }
   }
 
-  if (charging) { chargeT += dt; power = Math.min(1, chargeT / 0.9); }
-  reticle.style.setProperty('--p', charging ? power.toFixed(3) : '0');
-  reticle.classList.toggle('full', charging && power >= 1);
+  if (charging) {
+    chargeT += dt;
+    const ct = touchAim ? chargeT - TAP_T : chargeT;
+    power = Math.max(0, Math.min(1, ct / 0.9));
+  }
+  const cancelling = charging && inCancelZone();
+  reticle.style.setProperty('--p', charging && !cancelling ? power.toFixed(3) : '0');
+  reticle.classList.toggle('full', charging && !cancelling && power >= 1);
+  reticle.classList.toggle('cancel', cancelling);
 
   shake = Math.min(shake, 1.2);
   updateCamera(shake);

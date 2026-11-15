@@ -208,6 +208,7 @@ html, body {
   background: #ff3b3b;
   animation: pulse .25s infinite alternate;
 }
+#reticle.cancel { background: rgba(140, 140, 140, .6); }
 @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.15); } }
 
 /* ---------- FX text ---------- */
