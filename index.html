@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>SMASH BREAKER - 家電ぶん投げストレス発散</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- 3D シーン（CSS 3D Transforms のみで描画） -->
+<div id="viewport">
+  <div id="world"></div>
+  <canvas id="fxc"></canvas>
+  <div id="hand"></div>
+</div>
+
+<div id="vignette"></div>
+<div id="flashFx"></div>
+
+<div id="hud">
+  <div class="panel stats">
+    <div class="label">破壊総額</div>
+    <div id="yen">¥0</div>
+    <div class="sub">破壊数 <b id="count">0</b> 台</div>
+  </div>
+  <div class="right">
+    <div class="panel stress">
+      <div class="label">ストレス</div>
+      <div class="bar"><div id="stressFill"></div></div>
+      <div id="stressVal">100%</div>
+    </div>
+    <div class="tools">
+      <button id="btnClear" title="片付ける (C)">🧹 片付け</button>
+      <button id="btnSound" title="サウンド切替 (M)">🔊</button>
+    </div>
+  </div>
+</div>
+
+<div id="combo"></div>
+<div id="fx"></div>
+<div id="reticle"></div>
+
+<div id="bottom">
+  <div id="hint">長押しでパワーを溜めて、離して投げる！</div>
+  <div id="items"></div>
+</div>
+
+<div id="start" class="overlay">
+  <div class="card">
+    <h1>SMASH<br>BREAKER</h1>
+    <p class="tagline">家電ぶん投げ ストレス発散所</p>
+    <ul class="howto">
+      <li><b>マウス長押し</b> でパワーを溜める</li>
+      <li><b>離す</b> とカーソルの位置へ投げる</li>
+      <li><b>1〜9キー</b> で投げる物を切替 / <b>0</b> でランダム</li>
+      <li><b>C</b> で片付け / <b>M</b> で音のON/OFF</li>
+    </ul>
+    <button id="btnStart" class="big-btn" disabled>読み込み中…</button>
+    <p class="note">※ 音が出ます</p>
+  </div>
+</div>
+
+<div id="relief" class="overlay hidden">
+  <div class="card">
+    <h1 class="relief-title">スッキリ!!</h1>
+    <p class="tagline">ストレスが 0% になりました</p>
+    <div class="result">
+      <div><span>破壊総額</span><b id="rYen">¥0</b></div>
+      <div><span>破壊数</span><b id="rCount">0台</b></div>
+    </div>
+    <button id="btnMore" class="big-btn">まだ壊したい</button>
+  </div>
+</div>
+
+<script src="main.js"></script>
+</body>
+</html>
