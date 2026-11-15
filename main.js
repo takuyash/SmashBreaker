@@ -1110,8 +1110,10 @@ let lastDebrisSnd = 0;
 let started = false;
 let held = null, selected = 0, randomMode = false;
 let charging = false, chargeT = 0, power = 0;
-let touchAim = false;      // タッチ操作中の溜め（短いタップは投げない）
-const TAP_T = 0.2;         // これより短いタッチは「狙いの移動」扱い（秒）
+let touchAim = false;      // タッチで引っ張り中か
+let touchId = -1;
+const finger = { x: 0, y: 0 }; // タッチ中の指の位置（狙いは pointer）
+const PULL_DEAD = 24;      // これ未満の引っ張りで離したら投げない（px）
 
 function updateHUD() {
   $('yen').textContent = yenFmt(totalYen);
@@ -1469,27 +1471,48 @@ viewport.addEventListener('pointerdown', (e) => {
   if (e.pointerType === 'mouse' && e.button !== 0) return;
   document.body.classList.toggle('touch', e.pointerType !== 'mouse');
   e.preventDefault();
-  setPointer(e);
   Snd.init();
-  charging = true; chargeT = 0; power = 0;
-  touchAim = e.pointerType !== 'mouse';
+  if (e.pointerType === 'mouse') {
+    setPointer(e);
+    charging = true; chargeT = 0; power = 0; touchAim = false;
+  } else {
+    // タッチ: 触れた位置が狙い。そこから指を引っ張った距離がパワー
+    if (touchAim) return; // 2本目の指は無視
+    setPointer(e);
+    touchAim = true; touchId = e.pointerId;
+    finger.x = e.clientX; finger.y = e.clientY;
+    charging = true; chargeT = 0; power = 0;
+  }
   try { viewport.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
 });
-window.addEventListener('pointermove', setPointer);
+window.addEventListener('pointermove', (e) => {
+  if (touchAim) {
+    if (e.pointerId !== touchId) return;
+    finger.x = e.clientX; finger.y = e.clientY;
+    power = pullPower();
+  } else if (e.pointerType === 'mouse') setPointer(e);
+});
 window.addEventListener('pointerup', (e) => {
+  if (touchAim) {
+    if (e.pointerId !== touchId) return;
+    if (!charging) { cancelCharge(); return; }
+    finger.x = e.clientX; finger.y = e.clientY;
+    power = pullPower();
+    updateAim();
+    // ほとんど引っ張っていない = 狙いの移動だけ（投げない）
+    if (pullDist() < PULL_DEAD) { cancelCharge(); return; }
+    touchAim = false;
+    doThrow();
+    return;
+  }
   if (!charging) return;
-  setPointer(e); updateAim();
-  // タッチ: 短いタップは狙いの移動だけ / アイテムバーまでスライドでキャンセル
-  if (touchAim && (chargeT < TAP_T || inCancelZone())) { cancelCharge(); return; }
-  doThrow();
+  setPointer(e); updateAim(); doThrow();
 });
 window.addEventListener('pointercancel', cancelCharge);
 function cancelCharge() { charging = false; power = 0; touchAim = false; }
-function inCancelZone() {
-  if (!touchAim) return false;
-  const bar = $('items');
-  return !!bar && pointer.y > bar.getBoundingClientRect().top - 8;
-}
+function pullDist() { return Math.hypot(finger.x - pointer.x, finger.y - pointer.y); }
+function pullMax() { return Math.max(120, Math.min(W, H) * 0.35); }
+function pullPower() { return clamp((pullDist() - PULL_DEAD) / (pullMax() - PULL_DEAD), 0, 1); }
 // スマホ: 長押しでのコンテキストメニュー / ピンチズーム / ダブルタップズームを抑止
 viewport.addEventListener('contextmenu', (e) => e.preventDefault());
 document.addEventListener('gesturestart', (e) => e.preventDefault());
@@ -1527,7 +1550,19 @@ window.addEventListener('resize', resize);
    ========================================================= */
 function drawTrajectory(ctx) {
   if (!charging || !held) return;
-  if (touchAim && (chargeT < TAP_T || inCancelZone())) return;
+  if (touchAim) {
+    // 引っ張りのゴム紐
+    const d = pullDist();
+    if (d < PULL_DEAD) return;
+    ctx.save();
+    ctx.strokeStyle = `hsla(${50 - power * 50},100%,60%,0.7)`;
+    ctx.lineWidth = 3; ctx.setLineDash([8, 6]);
+    ctx.beginPath(); ctx.moveTo(pointer.x, pointer.y); ctx.lineTo(finger.x, finger.y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.beginPath(); ctx.arc(finger.x, finger.y, 10, 0, 6.2832); ctx.fill();
+    ctx.restore();
+  }
   const o = heldWorldPos(new V());
   const L = launch(o, aimPoint, power);
   const pt = new V(), pr = { x: 0, y: 0, k: 0 };
@@ -1589,13 +1624,10 @@ function frame(now) {
 
   if (charging) {
     chargeT += dt;
-    const ct = touchAim ? chargeT - TAP_T : chargeT;
-    power = Math.max(0, Math.min(1, ct / 0.9));
+    if (!touchAim) power = Math.min(1, chargeT / 0.9);
   }
-  const cancelling = charging && inCancelZone();
-  reticle.style.setProperty('--p', charging && !cancelling ? power.toFixed(3) : '0');
-  reticle.classList.toggle('full', charging && !cancelling && power >= 1);
-  reticle.classList.toggle('cancel', cancelling);
+  reticle.style.setProperty('--p', charging ? power.toFixed(3) : '0');
+  reticle.classList.toggle('full', charging && power >= 1);
 
   shake = Math.min(shake, 1.2);
   updateCamera(shake);
