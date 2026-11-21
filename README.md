@@ -3,7 +3,7 @@
 家電をぶん投げて壊しまくる、ブラウザで遊べるストレス発散ゲームです。
 PC でもスマホでも遊べます。
 
-▶ **プレイする:** https://takuyash.github.io/SmashBreaker/index.html
+▶ **プレイする:** https://takuyash.github.io/Kagu-Nageru/index.html
 
 ## 遊び方
 
