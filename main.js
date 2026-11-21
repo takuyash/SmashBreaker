@@ -670,8 +670,6 @@ function paintRoomBack(ctx, w, h, p) {
   }
   ctx.fillStyle = '#8fa3a8';
   for (let x = wx; x < wx + ww; x += rand(0.2, 0.4) * p) { const bh = rand(0.2, 0.6) * p; ctx.fillRect(x, wy + wh - bh, rand(0.15, 0.3) * p, bh); }
-  ctx.fillStyle = 'rgba(255,255,255,0.18)';
-  ctx.beginPath(); ctx.moveTo(wx + 0.3 * p, wy); ctx.lineTo(wx + 0.7 * p, wy); ctx.lineTo(wx + 0.2 * p, wy + wh); ctx.lineTo(wx - 0.2 * p, wy + wh); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = '#f5f3ee'; ctx.lineWidth = 0.08 * p; ctx.strokeRect(wx, wy, ww, wh);
   ctx.lineWidth = 0.05 * p;
   ctx.beginPath(); ctx.moveTo(wx + ww / 2, wy); ctx.lineTo(wx + ww / 2, wy + wh); ctx.stroke();
@@ -744,13 +742,13 @@ function paintRoomLeft(ctx, w, h, p) {
 function paintRoomRight(ctx, w, h, p) {
   // canvas x = z + 5（左端が奥）
   paintWallpaperBase(ctx, w, h, p);
-  // エアコン
-  const ax = 1.35 * p, ay = 0.75 * p, aw = 1.0 * p, ah = 0.32 * p;
-  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.3)'; ctx.shadowBlur = 0.06 * p; ctx.shadowOffsetY = 0.03 * p;
-  rrect(ctx, ax, ay, aw, ah, 0.05 * p); ctx.fillStyle = '#f7f6f2'; ctx.fill(); ctx.restore();
-  ctx.fillStyle = '#d9d7d0'; ctx.fillRect(ax + 0.04 * p, ay + ah - 0.09 * p, aw - 0.08 * p, 0.05 * p);
-  ctx.fillStyle = 'rgba(0,0,0,0.12)'; for (let i = 0; i < 3; i++) ctx.fillRect(ax + 0.05 * p, ay + ah - 0.08 * p + i * 0.016 * p, aw - 0.1 * p, 0.004 * p);
-  ctx.fillStyle = '#5fd18a'; ctx.beginPath(); ctx.arc(ax + aw - 0.1 * p, ay + 0.1 * p, 0.012 * p, 0, Math.PI * 2); ctx.fill();
+  // エアコン（本体は立体。壁には影と配管だけ描く）
+  const ax = 1.35 * p, ay = 0.8 * p, aw = 1.0 * p, ah = 0.3 * p;
+  const sg = ctx.createLinearGradient(0, ay + ah, 0, ay + ah + 0.25 * p);
+  sg.addColorStop(0, 'rgba(40,25,10,0.32)'); sg.addColorStop(1, 'rgba(40,25,10,0)');
+  ctx.fillStyle = sg; ctx.fillRect(ax - 0.03 * p, ay + ah, aw + 0.06 * p, 0.25 * p);
+  ctx.fillStyle = '#ece9e1'; ctx.fillRect(ax + aw + 0.05 * p, ay + 0.12 * p, 0.35 * p, 0.07 * p);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(ax + aw + 0.05 * p, ay + 0.18 * p, 0.35 * p, 0.012 * p);
   // ポスター（額縁）
   paintFrame(ctx, 1.4 * p, h - 3.1 * p, 0.9 * p, 1.2 * p, p, (x, y, fw, fh) => {
     ctx.fillStyle = '#ffd84a'; ctx.fillRect(x, y, fw, fh);
@@ -824,6 +822,134 @@ const PLANES = [
   { n: new V(0, -1, 0), d: -5, dust: [0.3, 0.3, 0.3] },
 ];
 
+/* ---------- 立体のエアコン（ふつうの部屋・右の壁） ---------- */
+const acPart = newPart();
+{
+  const shell = M(0xf2f1ec), panel = M(0xfbfaf6), slot = M(0x2b2d31), flap = M(0xd9dbde), led = M(0x4be38a, { emissive: true });
+  addBox(acPart, 1.0, 0.3, 0.24, shell, fr(0, 0, 0));
+  addBox(acPart, 0.97, 0.17, 0.012, panel, fr(0, 0.05, 0.124));
+  addBox(acPart, 0.92, 0.045, 0.01, slot, fr(0, -0.095, 0.121));
+  addBox(acPart, 0.9, 0.008, 0.075, flap, fr(0, -0.135, 0.13, 0.45, 0, 0));
+  addBox(acPart, 0.022, 0.012, 0.006, led, fr(0.43, 0.115, 0.131));
+  addBox(acPart, 0.12, 0.008, 0.004, M(0xb9bcc0), fr(-0.38, 0.115, 0.131));
+  worldEl.appendChild(acPart.el);
+  const q = new Q().euler(0, -Math.PI / 2, 0);
+  placePart(acPart, new V(3.875, 4.05, -3.15), q, 1, QI, q);
+  // 部屋の照明（天井のシーリングライト）向けに明るめの固定陰影をつける
+  const L = new V(-0.5, 0.75, 0.45).norm();
+  for (const f of acPart.faces) {
+    if (f.noShade) continue;
+    const b = 0.74 + 0.28 * Math.max(0, _vc.copy(f.n).applyQ(q).dot(L));
+    f.el.style.backgroundColor = rgba(f.m.c, b, f.m.a);
+    f.noShade = true;
+  }
+}
+/* 壁から出っ張った箱の当たり判定（外向きの面ごとの平面） */
+const AC_BOX = {
+  on: false, min: new V(3.75, 3.9, -3.65), max: new V(4, 4.2, -2.65),
+  planes: [
+    { n: new V(-1, 0, 0), d: -3.75, dust: [0.9, 0.9, 0.9] },
+    { n: new V(0, -1, 0), d: -3.9, dust: [0.9, 0.9, 0.9] },
+    { n: new V(0, 1, 0), d: 4.2, dust: [0.9, 0.9, 0.9] },
+    { n: new V(0, 0, -1), d: 3.65, dust: [0.9, 0.9, 0.9] },
+    { n: new V(0, 0, 1), d: -2.65, dust: [0.9, 0.9, 0.9] },
+  ],
+};
+const OBSTACLES = [AC_BOX];
+const inBox = (p, o) => p.x > o.min.x && p.x < o.max.x && p.y > o.min.y && p.y < o.max.y && p.z > o.min.z && p.z < o.max.z;
+
+/* ---------- 割れる窓ガラス（ふつうの部屋・奥の壁） ---------- */
+const WIN = {
+  on: false, ppm: 160, x0: -1.2, y1: 3.5, w: 2.4, h: 2.1, holes: [],
+  panes: [{ x0: -1.16, x1: -0.025, y0: 1.44, y1: 3.46 }, { x0: 0.025, x1: 1.16, y0: 1.44, y1: 3.46 }],
+};
+WIN.canvas = document.createElement('canvas');
+WIN.canvas.width = Math.round(WIN.w * WIN.ppm); WIN.canvas.height = Math.round(WIN.h * WIN.ppm);
+WIN.ctx = WIN.canvas.getContext('2d');
+roomFace(WIN.canvas, WIN.w, WIN.h, new V(0, WIN.y1 - WIN.h / 2, -4.985), new V(1, 0, 0), new V(0, 0, 1));
+const wpx = (x) => (x - WIN.x0) * WIN.ppm, wpy = (y) => (WIN.y1 - y) * WIN.ppm;
+function winPaneAt(x, y, m) {
+  m = m || 0;
+  return WIN.panes.find(p => x > p.x0 + m && x < p.x1 - m && y > p.y0 + m && y < p.y1 - m) || null;
+}
+function paneClip(ctx, pn) {
+  ctx.beginPath(); ctx.rect(wpx(pn.x0), wpy(pn.y1), (pn.x1 - pn.x0) * WIN.ppm, (pn.y1 - pn.y0) * WIN.ppm); ctx.clip();
+}
+function winReset() {
+  const ctx = WIN.ctx, c = WIN.canvas;
+  ctx.clearRect(0, 0, c.width, c.height);
+  WIN.holes.length = 0;
+  for (const pn of WIN.panes) {
+    pn.gone = false;
+    const x = wpx(pn.x0), y = wpy(pn.y1), w = (pn.x1 - pn.x0) * WIN.ppm, h = (pn.y1 - pn.y0) * WIN.ppm;
+    ctx.save(); paneClip(ctx, pn);
+    ctx.fillStyle = 'rgba(190,222,240,0.32)'; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = 'rgba(255,255,255,0.24)';
+    ctx.beginPath(); ctx.moveTo(x + w * 0.25, y); ctx.lineTo(x + w * 0.55, y); ctx.lineTo(x + w * 0.05, y + h); ctx.lineTo(x - w * 0.25, y + h); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.13)';
+    ctx.beginPath(); ctx.moveTo(x + w * 0.7, y); ctx.lineTo(x + w * 0.8, y); ctx.lineTo(x + w * 0.4, y + h); ctx.lineTo(x + w * 0.3, y + h); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+}
+function winCracks(pn, x, y, r0, len, n) {
+  const ctx = WIN.ctx, p = WIN.ppm, cx0 = wpx(x), cy0 = wpy(y);
+  ctx.save(); paneClip(ctx, pn);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (let i = 0; i < n; i++) {
+    let a = i / n * Math.PI * 2 + rand(-0.25, 0.25);
+    let cx = cx0 + Math.cos(a) * r0 * p, cy = cy0 + Math.sin(a) * r0 * p;
+    const st = len * rand(0.5, 1.2) * p / 5;
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    for (let s = 0; s < 5; s++) { a += rand(-0.3, 0.3); cx += Math.cos(a) * st; cy += Math.sin(a) * st; ctx.lineTo(cx, cy); }
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 1.4; ctx.stroke();
+  }
+  for (let ring = 1; ring <= 2; ring++) {
+    const rr = (r0 + len * ring / 3) * p;
+    for (let i = 0; i < n; i++) {
+      if (Math.random() < 0.35) continue;
+      const a0 = i / n * Math.PI * 2, a1 = (i + 1) / n * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(cx0 + Math.cos(a0) * rr * rand(0.9, 1.1), cy0 + Math.sin(a0) * rr * rand(0.9, 1.1));
+      ctx.lineTo(cx0 + Math.cos(a1) * rr * rand(0.9, 1.1), cy0 + Math.sin(a1) * rr * rand(0.9, 1.1));
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1; ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+function cutJagged(ctx, pts) {
+  ctx.beginPath(); pts.forEach((q, i) => i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])); ctx.closePath();
+  ctx.globalCompositeOperation = 'destination-out'; ctx.fillStyle = '#000'; ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 2; ctx.stroke();
+}
+function winHole(pn, x, y, r) {
+  const ctx = WIN.ctx, p = WIN.ppm, cx = wpx(x), cy = wpy(y), pts = [], n = 16;
+  for (let i = 0; i < n; i++) {
+    const a = i / n * Math.PI * 2 + rand(-0.12, 0.12), rr = r * (i % 2 ? rand(0.55, 0.8) : rand(0.95, 1.3));
+    pts.push([cx + Math.cos(a) * rr * p, cy + Math.sin(a) * rr * p]);
+  }
+  ctx.save(); paneClip(ctx, pn); cutJagged(ctx, pts); ctx.restore();
+  winCracks(pn, x, y, r * 0.9, r * 1.5 + 0.2, 12);
+  WIN.holes.push({ pn, x, y, r: r * 0.65 });
+}
+function winShatterPane(pn) {
+  // 枠のまわりにギザギザの破片だけ残して、ガラスがほぼ全部抜け落ちる
+  const ctx = WIN.ctx, p = WIN.ppm, pts = [];
+  const x0 = pn.x0, x1 = pn.x1, y0 = pn.y0, y1 = pn.y1, inset = () => rand(0.01, 0.13);
+  for (let x = x0; x < x1; x += 0.12) pts.push([wpx(x), wpy(y1 - inset())]);
+  for (let y = y1; y > y0; y -= 0.12) pts.push([wpx(x1 - inset()), wpy(y)]);
+  for (let x = x1; x > x0; x -= 0.12) pts.push([wpx(x), wpy(y0 + inset())]);
+  for (let y = y0; y < y1; y += 0.12) pts.push([wpx(x0 + inset()), wpy(y)]);
+  ctx.save(); paneClip(ctx, pn); cutJagged(ctx, pts); ctx.restore();
+  pn.gone = true;
+}
+function winFits(x, y, rr) {
+  const pn = winPaneAt(x, y);
+  if (!pn) return false;
+  if (pn.gone) return !!winPaneAt(x, y, Math.min(rr * 0.4, 0.15));
+  return WIN.holes.some(h => h.pn === pn && Math.hypot(x - h.x, y - h.y) < h.r - rr * 0.3);
+}
+
 /* ---------- stage switching ---------- */
 let stage = STAGES[0];
 function applyStage(id) {
@@ -834,6 +960,11 @@ function applyStage(id) {
   tubeEls.forEach(t => { t.style.display = stage.light === 'tubes' ? '' : 'none'; });
   lampEl.style.display = stage.light === 'lamp' ? '' : 'none';
   bbEl.style.background = stage.baseboard;
+  const room = stage.id === 'room';
+  WIN.on = AC_BOX.on = room;
+  WIN.canvas.style.display = room ? '' : 'none';
+  acPart.el.style.display = room ? '' : 'none';
+  winReset();
   PLANES[0].dust = stage.dust.floor; PLANES[1].dust = stage.dust.back;
   PLANES[2].dust = PLANES[3].dust = stage.dust.side;
   try { localStorage.setItem('kagu-stage', stage.id); } catch (e) { /* ignore */ }
@@ -1238,12 +1369,52 @@ class Body {
     const wl = w.len();
     if (wl > 1e-6) { _axis.copy(w).mul(1 / wl); _q.axisAngle(_axis, wl * dt); this.q.premul(_q).norm(); }
     this.updateCorners();
-    for (let i = 0; i < PLANES.length; i++) this.collide(PLANES[i]);
+    for (let i = 0; i < PLANES.length; i++) {
+      const P = PLANES[i];
+      if (P.back && WIN.on && this.windowPass()) continue;
+      this.collide(P);
+    }
+    for (let i = 0; i < OBSTACLES.length; i++) this.collideBox(OBSTACLES[i]);
   }
-  collide(P) {
+  /* 窓ガラスの穴を通り抜けるか / 勢いよく当たってガラスを割るか */
+  windowPass() {
+    if (this.through) { if (this.vel.z > -1.5) this.vel.z = -1.5; this.sleep = false; return true; }
+    let minZ = Infinity;
+    for (let i = 0; i < 8; i++) if (this.wc[i].z < minZ) minZ = this.wc[i].z;
+    if (minZ > -5) return false;
+    const x = this.pos.x, y = this.pos.y, pn = winPaneAt(x, y);
+    if (!pn) return false;
+    const rr = this.size * 0.35;
+    if (!winFits(x, y, rr)) {
+      const sp = -this.vel.z, thr = 3.5 + 3 / Math.sqrt(this.mass);
+      if (this.paper || pn.gone || sp < thr) return false;
+      windowSmash(this, pn, x, y, sp, thr);
+      if (!winFits(x, y, rr)) return false;
+    }
+    this.through = true; this.vel.mul(0.8);
+    return true;
+  }
+  collideBox(o) {
+    if (!o.on) return;
+    const wc = this.wc;
+    let any = false;
+    for (let i = 0; i < 8; i++) if (inBox(wc[i], o)) { any = true; break; }
+    if (!any) return;
+    let best = null, bestPen = Infinity;
+    for (const P of o.planes) {
+      let pen = 0;
+      for (let i = 0; i < 8; i++) if (inBox(wc[i], o)) pen = Math.max(pen, P.d - P.n.dot(wc[i]));
+      if (pen < bestPen) { bestPen = pen; best = P; }
+    }
+    this.collide(best, o);
+  }
+  collide(P, box) {
     const n = P.n, wc = this.wc;
     let minD = Infinity;
-    for (let i = 0; i < 8; i++) { const d = n.dot(wc[i]) - P.d; _dists[i] = d; if (d < minD) minD = d; }
+    for (let i = 0; i < 8; i++) {
+      if (box && !inBox(wc[i], box)) { _dists[i] = Infinity; continue; }
+      const d = n.dot(wc[i]) - P.d; _dists[i] = d; if (d < minD) minD = d;
+    }
     if (minD >= 0) return;
     const pos = this.pos;
     pos.addS(n, -minD);
@@ -1477,7 +1648,12 @@ function mainImpact(b, imp) {
   Snd.hit(def.snd, s, pan, 0, b.size);
   const dmg = Math.pow(Math.max(0, s - 4), 1.4);
 
-  if (imp.plane.surf && s > 6) {
+  const glassPane = imp.plane.back && WIN.on && winPaneAt(imp.point.x, imp.point.y);
+  if (glassPane) {
+    // 割れるほどではないけど、ガラスにヒビ
+    if (s > 3) winCracks(glassPane, imp.point.x, imp.point.y, 0.01, 0.08 + s * 0.012, 7);
+    Snd.hit('glass', s, pan, 0, 0.3);
+  } else if (imp.plane.surf && s > 6) {
     const mm = imp.plane.map(imp.point);
     imp.plane.surf.crack(mm[0], mm[1], (s - 6) / 16 * Math.sqrt(def.mass / 4));
   }
@@ -1485,7 +1661,7 @@ function mainImpact(b, imp) {
   if (def.snd === 'metal' && s > 8) sparkBurst(imp.point, Math.round(6 + s), false);
   shake += Math.min(0.6, s * 0.012 * Math.sqrt(def.mass / 3));
 
-  if (imp.plane.back && s > 6) {
+  if (imp.plane.back && stage.id === 'factory' && s > 6) {
     const dx = imp.point.x, dy = imp.point.y - 1.5;
     if (dx * dx + dy * dy < 0.36) { popText('ど真ん中!!', new V(imp.point.x, imp.point.y + 0.45, imp.point.z), 'bull'); relieve(4); }
   }
@@ -1604,6 +1780,24 @@ function shatter(b, imp) {
   relieve(3);
   updateHUD();
   enforceLimit();
+}
+
+/* 窓ガラスが割れた瞬間（Body.windowPass から呼ばれる） */
+function windowSmash(b, pn, x, y, sp, thr) {
+  const r = clamp(b.size * 0.6 + (sp - thr) * 0.02 * Math.sqrt(Math.min(b.mass, 12)), 0.1, 0.9);
+  const pt = new V(x, y, -4.97), pan = clamp(x / 4, -1, 1);
+  let n;
+  if (r > 0.55 && !pn.gone) { winShatterPane(pn); n = 30; }
+  else { winHole(pn, x, y, r); n = Math.round(6 + r * 30); }
+  spawnChips(pt, b.vel.clone().mul(-0.12), MAT.glassClear, n, 0.05, 2.5 + sp * 0.08);
+  grainBurst(pt, 80 + n * 4, [[0.85, 0.95, 1], [1, 1, 1], [0.7, 0.85, 0.95]], 0.9, 0.012, 3);
+  Snd.crash('glass', Math.max(sp, 12), pan, false);
+  Snd.hit('glass', 20, pan, 0.03, 0.05);
+  popText(pick(GLASS_WORDS), new V(x, y + 0.35, -4.9), 'break glass');
+  addYen(pn.gone ? 28000 : 12000, pt);
+  relieve(pn.gone ? 8 : 5);
+  shake += pn.gone ? 0.45 : 0.25;
+  if (pn.gone) screenFlash(0.2);
 }
 
 function debrisImpact(b, imp) {
@@ -1762,6 +1956,7 @@ function select(i) {
 function clearAll() {
   while (bodies.length) removeBodyAt(0);
   SURFACES.forEach(s => s.reset());
+  winReset();
   PSYS.forEach(p => p.clear());
   fxLayer.innerHTML = '';
 }
@@ -1926,6 +2121,11 @@ function frame(now) {
   }
   for (let i = bodies.length - 1; i >= 0; i--) {
     const b = bodies[i];
+    if (b.through && b.pos.z < -5.6) {
+      // 窓から外へ飛んでいった
+      if (b.main) { popText('窓の外へ!!', new V(b.pos.x, b.pos.y + 0.3, -4.9), 'hit'); relieve(3); }
+      removeBodyAt(i); continue;
+    }
     if (b.sleep) {
       b.sleepAge += sdt;
       if (b.chip && b.sleepAge > 5) { removeBodyAt(i); continue; }
