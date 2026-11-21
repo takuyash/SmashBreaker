@@ -631,16 +631,11 @@ function paintBaseboard(ctx, w, h, p) {
   ctx.fillStyle = 'rgba(255,230,200,0.25)'; ctx.fillRect(0, h - bh, w, 0.012 * p);
   ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(0, h - bh - 0.015 * p, w, 0.015 * p);
 }
-function paintFrame(ctx, x, y, fw, fh, p, inner) {
-  ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 0.05 * p; ctx.shadowOffsetY = 0.02 * p;
-  ctx.fillStyle = '#5a3a22'; ctx.fillRect(x, y, fw, fh);
-  ctx.restore();
-  const m = 0.05 * p;
-  ctx.fillStyle = '#f3efe6'; ctx.fillRect(x + m, y + m, fw - m * 2, fh - m * 2);
-  ctx.save(); ctx.beginPath(); ctx.rect(x + m * 2, y + m * 2, fw - m * 4, fh - m * 4); ctx.clip();
-  inner(x + m * 2, y + m * 2, fw - m * 4, fh - m * 4);
-  ctx.restore();
+/* 壁掛けの物（立体）が掛かっている釘。物が壊れて落ちると見える */
+function paintNail(ctx, x, y, p) {
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.arc(x + 0.006 * p, y + 0.008 * p, 0.014 * p, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#8a8d92'; ctx.beginPath(); ctx.arc(x, y, 0.012 * p, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.arc(x - 0.004 * p, y - 0.004 * p, 0.004 * p, 0, Math.PI * 2); ctx.fill();
 }
 function paintWallShade(ctx, w, h, p, dir) {
   const g = ctx.createLinearGradient(0, h * 0.55, 0, h);
@@ -686,24 +681,9 @@ function paintRoomBack(ctx, w, h, p) {
     ctx.lineTo(x0 + cw + side * 0.04 * p, bot); ctx.lineTo(x0 + side * 0.04 * p, bot); ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x0, bot - 0.03 * p, cw, 0.03 * p);
   }
-  // 額縁（山の絵）
-  paintFrame(ctx, 0.8 * p, 2.0 * p, 1.2 * p, 0.85 * p, p, (x, y, fw, fh) => {
-    const g = ctx.createLinearGradient(0, y, 0, y + fh); g.addColorStop(0, '#f4c27a'); g.addColorStop(1, '#f7e2b5');
-    ctx.fillStyle = g; ctx.fillRect(x, y, fw, fh);
-    ctx.fillStyle = '#e8743b'; ctx.beginPath(); ctx.arc(x + fw * 0.7, y + fh * 0.4, fh * 0.14, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#4c6b5a'; ctx.beginPath(); ctx.moveTo(x, y + fh); ctx.lineTo(x + fw * 0.35, y + fh * 0.35); ctx.lineTo(x + fw * 0.7, y + fh); ctx.fill();
-    ctx.fillStyle = '#35503f'; ctx.beginPath(); ctx.moveTo(x + fw * 0.4, y + fh); ctx.lineTo(x + fw * 0.75, y + fh * 0.55); ctx.lineTo(x + fw * 1.1, y + fh); ctx.fill();
-  });
-  // 時計
-  const cx = 6.7 * p, cy = 1.7 * p, r = 0.3 * p;
-  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 0.05 * p; ctx.shadowOffsetY = 0.02 * p;
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = '#3b3b3b'; ctx.fill(); ctx.restore();
-  ctx.beginPath(); ctx.arc(cx, cy, r * 0.88, 0, Math.PI * 2); ctx.fillStyle = '#fbfaf6'; ctx.fill();
-  ctx.fillStyle = '#333';
-  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; ctx.fillRect(cx + Math.cos(a) * r * 0.75 - 2, cy + Math.sin(a) * r * 0.75 - 2, 4, 4); }
-  ctx.strokeStyle = '#222'; ctx.lineCap = 'round';
-  ctx.lineWidth = 0.025 * p; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(-2.2) * r * 0.45, cy + Math.sin(-2.2) * r * 0.45); ctx.stroke();
-  ctx.lineWidth = 0.015 * p; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(-0.5) * r * 0.7, cy + Math.sin(-0.5) * r * 0.7); ctx.stroke();
+  // 額縁・時計は立体（PROPS）。ここには釘だけ
+  paintNail(ctx, 1.4 * p, 2.2 * p, p);
+  paintNail(ctx, 6.7 * p, 1.55 * p, p);
   // コンセント
   ctx.fillStyle = '#f4f2ec'; ctx.fillRect(1.6 * p, h - 0.42 * p, 0.08 * p, 0.12 * p);
   ctx.fillStyle = '#555'; ctx.fillRect(1.625 * p, h - 0.39 * p, 0.008 * p, 0.022 * p); ctx.fillRect(1.645 * p, h - 0.39 * p, 0.008 * p, 0.022 * p);
@@ -726,16 +706,8 @@ function paintRoomLeft(ctx, w, h, p) {
   // スイッチ
   ctx.fillStyle = '#f6f4ee'; ctx.fillRect(dx + dw + 0.15 * p, h - 1.3 * p, 0.08 * p, 0.12 * p);
   ctx.fillStyle = '#ccc'; ctx.fillRect(dx + dw + 0.165 * p, h - 1.28 * p, 0.05 * p, 0.035 * p);
-  // カレンダー
-  const kx = 6.8 * p, ky = h - 2.3 * p;
-  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(kx + 0.02 * p, ky + 0.02 * p, 0.5 * p, 0.7 * p);
-  ctx.fillStyle = '#fff'; ctx.fillRect(kx, ky, 0.5 * p, 0.7 * p);
-  ctx.fillStyle = '#8bc4e8'; ctx.fillRect(kx + 0.03 * p, ky + 0.03 * p, 0.44 * p, 0.26 * p);
-  ctx.fillStyle = '#c23'; ctx.font = `${Math.round(0.07 * p)}px sans-serif`; ctx.textAlign = 'center';
-  ctx.fillText('11', kx + 0.25 * p, ky + 0.38 * p);
-  ctx.fillStyle = '#888';
-  for (let r = 0; r < 5; r++) for (let c = 0; c < 7; c++) ctx.fillRect(kx + (0.05 + c * 0.058) * p, ky + (0.43 + r * 0.05) * p, 0.03 * p, 0.02 * p);
-  ctx.fillStyle = '#555'; ctx.beginPath(); ctx.arc(kx + 0.25 * p, ky - 0.03 * p, 0.015 * p, 0, Math.PI * 2); ctx.fill();
+  // カレンダーは立体（PROPS）。ここには釘だけ
+  paintNail(ctx, 7.05 * p, h - 2.27 * p, p);
   paintBaseboard(ctx, w, h, p);
   paintWallShade(ctx, w, h, p, 1);
 }
@@ -749,20 +721,10 @@ function paintRoomRight(ctx, w, h, p) {
   ctx.fillStyle = sg; ctx.fillRect(ax - 0.03 * p, ay + ah, aw + 0.06 * p, 0.25 * p);
   ctx.fillStyle = '#ece9e1'; ctx.fillRect(ax + aw + 0.05 * p, ay + 0.12 * p, 0.35 * p, 0.07 * p);
   ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(ax + aw + 0.05 * p, ay + 0.18 * p, 0.35 * p, 0.012 * p);
-  // ポスター（額縁）
-  paintFrame(ctx, 1.4 * p, h - 3.1 * p, 0.9 * p, 1.2 * p, p, (x, y, fw, fh) => {
-    ctx.fillStyle = '#ffd84a'; ctx.fillRect(x, y, fw, fh);
-    ctx.fillStyle = '#e94b3c'; ctx.beginPath(); ctx.arc(x + fw / 2, y + fh * 0.4, fw * 0.3, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#222'; ctx.font = `${Math.round(0.11 * p)}px "Dela Gothic One", sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText('RELAX', x + fw / 2, y + fh * 0.85);
-  });
-  // 小さい額縁ふたつ
-  for (const [fx, c1, c2] of [[3.0, '#7fb3d5', '#2e6f99'], [3.8, '#f2b5c4', '#c45a78']]) {
-    paintFrame(ctx, fx * p, h - 2.4 * p, 0.55 * p, 0.55 * p, p, (x, y, fw, fh) => {
-      ctx.fillStyle = c1; ctx.fillRect(x, y, fw, fh);
-      ctx.fillStyle = c2; ctx.beginPath(); ctx.arc(x + fw / 2, y + fh / 2, fw * 0.28, 0, Math.PI * 2); ctx.fill();
-    });
-  }
+  // ポスター・小さい額縁は立体（PROPS）。ここには釘だけ
+  paintNail(ctx, 1.85 * p, h - 2.95 * p, p);
+  paintNail(ctx, 3.275 * p, h - 2.3 * p, p);
+  paintNail(ctx, 4.075 * p, h - 2.3 * p, p);
   paintBaseboard(ctx, w, h, p);
   paintWallShade(ctx, w, h, p, -1);
 }
@@ -822,40 +784,176 @@ const PLANES = [
   { n: new V(0, -1, 0), d: -5, dust: [0.3, 0.3, 0.3] },
 ];
 
-/* ---------- 立体のエアコン（ふつうの部屋・右の壁） ---------- */
-const acPart = newPart();
-{
-  const shell = M(0xf2f1ec), panel = M(0xfbfaf6), slot = M(0x2b2d31), flap = M(0xd9dbde), led = M(0x4be38a, { emissive: true });
-  addBox(acPart, 1.0, 0.3, 0.24, shell, fr(0, 0, 0));
-  addBox(acPart, 0.97, 0.17, 0.012, panel, fr(0, 0.05, 0.124));
-  addBox(acPart, 0.92, 0.045, 0.01, slot, fr(0, -0.095, 0.121));
-  addBox(acPart, 0.9, 0.008, 0.075, flap, fr(0, -0.135, 0.13, 0.45, 0, 0));
-  addBox(acPart, 0.022, 0.012, 0.006, led, fr(0.43, 0.115, 0.131));
-  addBox(acPart, 0.12, 0.008, 0.004, M(0xb9bcc0), fr(-0.38, 0.115, 0.131));
-  worldEl.appendChild(acPart.el);
-  const q = new Q().euler(0, -Math.PI / 2, 0);
-  placePart(acPart, new V(3.875, 4.05, -3.15), q, 1, QI, q);
-  // 部屋の照明（天井のシーリングライト）向けに明るめの固定陰影をつける
-  const L = new V(-0.5, 0.75, 0.45).norm();
-  for (const f of acPart.faces) {
+/* =========================================================
+   壊せる壁掛けの物（ふつうの部屋）：エアコン・時計・額縁・ポスター・カレンダー
+   ========================================================= */
+const clockTex = texURL(256, 256, (ctx, w) => {
+  const c = w / 2, r = w / 2;
+  ctx.fillStyle = '#fbfaf6'; ctx.beginPath(); ctx.arc(c, c, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#333';
+  for (let i = 0; i < 60; i++) {
+    const big = i % 5 === 0, wd = big ? 6 : 2, len = big ? 18 : 7;
+    ctx.save(); ctx.translate(c, c); ctx.rotate(i / 60 * Math.PI * 2); ctx.fillRect(-wd / 2, -r + 12, wd, len); ctx.restore();
+  }
+  ctx.font = 'bold 30px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  [['12', 0, -1], ['3', 1, 0], ['6', 0, 1], ['9', -1, 0]].forEach(([t, x, y]) => ctx.fillText(t, c + x * r * 0.66, c + y * r * 0.66));
+  const hand = (a, len, wd, col) => { ctx.save(); ctx.translate(c, c); ctx.rotate(a); ctx.fillStyle = col; ctx.fillRect(-wd / 2, -len, wd, len + 10); ctx.restore(); };
+  hand(-0.75, r * 0.45, 9, '#222'); hand(1.95, r * 0.7, 6, '#222'); hand(3.6, r * 0.78, 2, '#d33');
+  ctx.fillStyle = '#222'; ctx.beginPath(); ctx.arc(c, c, 8, 0, Math.PI * 2); ctx.fill();
+  const g = ctx.createLinearGradient(0, 0, w, w); g.addColorStop(0, 'rgba(255,255,255,0.35)'); g.addColorStop(0.45, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(c, c, r, 0, Math.PI * 2); ctx.fill();
+});
+const matPic = (w, h, inner) => texURL(w, h, (ctx) => {
+  ctx.fillStyle = '#f3efe6'; ctx.fillRect(0, 0, w, h);
+  const m = Math.round(Math.min(w, h) * 0.08);
+  ctx.save(); ctx.beginPath(); ctx.rect(m, m, w - m * 2, h - m * 2); ctx.clip();
+  inner(ctx, m, m, w - m * 2, h - m * 2); ctx.restore();
+  const g = ctx.createLinearGradient(0, 0, w, h); g.addColorStop(0, 'rgba(255,255,255,0.25)'); g.addColorStop(0.4, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+});
+const mountainTex = matPic(300, 210, (ctx, x, y, fw, fh) => {
+  const g = ctx.createLinearGradient(0, y, 0, y + fh); g.addColorStop(0, '#f4c27a'); g.addColorStop(1, '#f7e2b5');
+  ctx.fillStyle = g; ctx.fillRect(x, y, fw, fh);
+  ctx.fillStyle = '#e8743b'; ctx.beginPath(); ctx.arc(x + fw * 0.7, y + fh * 0.4, fh * 0.14, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#4c6b5a'; ctx.beginPath(); ctx.moveTo(x, y + fh); ctx.lineTo(x + fw * 0.35, y + fh * 0.35); ctx.lineTo(x + fw * 0.7, y + fh); ctx.fill();
+  ctx.fillStyle = '#35503f'; ctx.beginPath(); ctx.moveTo(x + fw * 0.4, y + fh); ctx.lineTo(x + fw * 0.75, y + fh * 0.55); ctx.lineTo(x + fw * 1.1, y + fh); ctx.fill();
+});
+const posterTex = matPic(200, 275, (ctx, x, y, fw, fh) => {
+  ctx.fillStyle = '#ffd84a'; ctx.fillRect(x, y, fw, fh);
+  ctx.fillStyle = '#e94b3c'; ctx.beginPath(); ctx.arc(x + fw / 2, y + fh * 0.4, fw * 0.3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#222'; ctx.font = `${Math.round(fw * 0.2)}px "Dela Gothic One", sans-serif`; ctx.textAlign = 'center';
+  ctx.fillText('RELAX', x + fw / 2, y + fh * 0.86);
+});
+const dotTex = (c1, c2) => matPic(128, 128, (ctx, x, y, fw, fh) => {
+  ctx.fillStyle = c1; ctx.fillRect(x, y, fw, fh);
+  ctx.fillStyle = c2; ctx.beginPath(); ctx.arc(x + fw / 2, y + fh / 2, fw * 0.3, 0, Math.PI * 2); ctx.fill();
+});
+const blueTex = dotTex('#7fb3d5', '#2e6f99'), pinkTex = dotTex('#f2b5c4', '#c45a78');
+const calendarTex = texURL(200, 280, (ctx, w, h) => {
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#8bc4e8'; ctx.fillRect(12, 12, w - 24, 100);
+  ctx.fillStyle = '#5b9a4a'; ctx.beginPath(); ctx.moveTo(12, 112); ctx.lineTo(80, 60); ctx.lineTo(130, 112); ctx.fill();
+  ctx.fillStyle = '#c23'; ctx.font = 'bold 28px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('11', w / 2, 146);
+  for (let r = 0; r < 5; r++) for (let c = 0; c < 7; c++) {
+    ctx.fillStyle = c === 0 ? '#d55' : c === 6 ? '#58c' : '#777';
+    ctx.fillRect(20 + c * 24, 168 + r * 20, 12, 8);
+  }
+});
+
+const PROP_MAT = {
+  wood: M(0x5a3a22), dark: M(0x3b3b3b), acShell: M(0xf2f1ec), acPanel: M(0xfbfaf6), acSlot: M(0x2b2d31),
+  acFlap: M(0xd9dbde), acLed: M(0x4be38a, { emissive: true, snd: 'glass' }), acLogo: M(0xb9bcc0),
+};
+const texMat = (tex, o) => Object.assign(M(0xffffff, { tex }), o || {});
+const ROOM_L = new V(-0.5, 0.75, 0.45).norm();
+const Q_BACK = new Q(), Q_LEFT = new Q().euler(0, Math.PI / 2, 0), Q_RIGHT = new Q().euler(0, -Math.PI / 2, 0);
+
+/* 壁に掛かっている間は部屋の照明に合わせた固定の明るさにする */
+function roomShade(part, q) {
+  for (const f of part.faces) {
     if (f.noShade) continue;
-    const b = 0.74 + 0.28 * Math.max(0, _vc.copy(f.n).applyQ(q).dot(L));
-    f.el.style.backgroundColor = rgba(f.m.c, b, f.m.a);
-    f.noShade = true;
+    const b = 0.8 + 0.24 * Math.max(0, _vc.copy(f.n).applyQ(q).dot(ROOM_L));
+    if (f.m.tex) f.el.style.filter = `brightness(${b.toFixed(3)})`;
+    else f.el.style.backgroundColor = rgba(f.m.c, b, f.m.a);
+    f.noShade = true; f.wallLit = true;
   }
 }
-/* 壁から出っ張った箱の当たり判定（外向きの面ごとの平面） */
-const AC_BOX = {
-  on: false, min: new V(3.75, 3.9, -3.65), max: new V(4, 4.2, -2.65),
-  planes: [
-    { n: new V(-1, 0, 0), d: -3.75, dust: [0.9, 0.9, 0.9] },
-    { n: new V(0, -1, 0), d: -3.9, dust: [0.9, 0.9, 0.9] },
-    { n: new V(0, 1, 0), d: 4.2, dust: [0.9, 0.9, 0.9] },
-    { n: new V(0, 0, -1), d: 3.65, dust: [0.9, 0.9, 0.9] },
-    { n: new V(0, 0, 1), d: -2.65, dust: [0.9, 0.9, 0.9] },
-  ],
-};
-const OBSTACLES = [AC_BOX];
+function unShade(part) { for (const f of part.faces) if (f.wallLit) { f.noShade = false; f.wallLit = false; f.lastB = -1; } }
+
+function framedPart(w, h, tex) {
+  const part = newPart();
+  addBox(part, w, h, 0.03, PROP_MAT.wood);
+  addPlate(part, w - 0.1, h - 0.1, texMat(tex), fr(0, 0, 0.0165), { dbl: false });
+  return part;
+}
+const PROP_DEFS = [
+  {
+    id: 'ac', name: 'エアコン', price: 80000, hp: 45, snd: 'plastic', electric: true, big: true, relief: 10,
+    pos: new V(3.875, 4.05, -3.15), q: Q_RIGHT, wn: new V(-1, 0, 0), word: 'ドッカーン!!',
+    build() {
+      const shell = newPart(); shell.core = true;
+      addBox(shell, 1.0, 0.3, 0.24, PROP_MAT.acShell);
+      addBox(shell, 0.92, 0.045, 0.01, PROP_MAT.acSlot, fr(0, -0.095, 0.121));
+      addBox(shell, 0.022, 0.012, 0.006, PROP_MAT.acLed, fr(0.43, 0.115, 0.123));
+      addBox(shell, 0.12, 0.008, 0.004, PROP_MAT.acLogo, fr(-0.38, 0.115, 0.122));
+      const panel = newPart(); addBox(panel, 0.97, 0.17, 0.012, PROP_MAT.acPanel);
+      const flap = newPart(); addBox(flap, 0.9, 0.008, 0.075, PROP_MAT.acFlap);
+      return [[shell, new V()], [panel, new V(0, 0.05, 0.127)], [flap, new V(0, -0.135, 0.13), new Q().euler(0.45, 0, 0)]];
+    },
+  },
+  {
+    id: 'clock', name: '時計', price: 3000, hp: 5, snd: 'plastic', glass: true, relief: 4,
+    pos: new V(2.7, 3.3, -4.975), q: Q_BACK, wn: new V(0, 0, 1), word: 'ガシャン!!', tilt: true,
+    build() {
+      const part = newPart(); part.core = true;
+      addCyl(part, 0.3, 0.3, 0.05, 18, PROP_MAT.dark, fr(0, 0, 0, Math.PI / 2, 0, 0));
+      addPlate(part, 0.54, 0.54, texMat(clockTex), fr(0, 0, 0.026), { round: true, dbl: false });
+      return [[part, new V()]];
+    },
+  },
+  {
+    id: 'picture', name: '絵', price: 15000, hp: 8, snd: 'plastic', glass: true, relief: 5,
+    pos: new V(-2.6, 2.575, -4.985), q: Q_BACK, wn: new V(0, 0, 1), tilt: true,
+    build() { return [[framedPart(1.2, 0.85, mountainTex), new V()]]; },
+  },
+  {
+    id: 'poster', name: 'ポスター', price: 8000, hp: 8, snd: 'plastic', glass: true, relief: 5,
+    pos: new V(3.985, 2.5, -3.15), q: Q_RIGHT, wn: new V(-1, 0, 0), tilt: true,
+    build() { return [[framedPart(0.9, 1.2, posterTex), new V()]]; },
+  },
+  {
+    id: 'frameA', name: '額縁', price: 4000, hp: 5, snd: 'plastic', glass: true, relief: 3,
+    pos: new V(3.985, 2.125, -1.725), q: Q_RIGHT, wn: new V(-1, 0, 0), tilt: true,
+    build() { return [[framedPart(0.55, 0.55, blueTex), new V()]]; },
+  },
+  {
+    id: 'frameB', name: '額縁', price: 4000, hp: 5, snd: 'plastic', glass: true, relief: 3,
+    pos: new V(3.985, 2.125, -0.925), q: Q_RIGHT, wn: new V(-1, 0, 0), tilt: true,
+    build() { return [[framedPart(0.55, 0.55, pinkTex), new V()]]; },
+  },
+  {
+    id: 'calendar', name: 'カレンダー', price: 1000, hp: 2, snd: 'soft', paper: true, relief: 3,
+    pos: new V(-3.993, 1.95, -2.05), q: Q_LEFT, wn: new V(1, 0, 0), word: 'ビリッ!!', tilt: true,
+    build() {
+      const part = newPart();
+      addPlate(part, 0.5, 0.7, texMat(calendarTex, { snd: 'soft' }), fr(0, 0, 0.002));
+      return [[part, new V()]];
+    },
+  },
+];
+
+/* 箱の当たり判定：壁の中まで伸ばしておく（速い物が薄い額縁をすり抜けて壁に当たるのを防ぐ） */
+function makeProp(d) {
+  const o = { def: d, hp: d.hp, maxHp: d.hp, on: true, broken: false, tiltA: 0, ents: [] };
+  const mn = new V(1e9, 1e9, 1e9), mx = new V(-1e9, -1e9, -1e9);
+  for (const [part, off, lq0] of d.build()) {
+    const lq = new Q().mulQ(d.q, lq0 || QI), lp = off.clone().applyQ(d.q).add(d.pos);
+    worldEl.appendChild(part.el);
+    placePart(part, lp, lq, 1, QI, lq);
+    roomShade(part, lq);
+    o.ents.push({ part, lp, lq, q0: lq.clone() });
+    for (let i = 0; i < 8; i++) {
+      _vd.set(i & 1 ? part.max.x : part.min.x, i & 2 ? part.max.y : part.min.y, i & 4 ? part.max.z : part.min.z).applyQ(lq).add(lp);
+      mn.min(_vd); mx.max(_vd);
+    }
+  }
+  const back = d.wn.clone().mul(-0.4);
+  mn.min(_va.copy(mn).add(back)); mx.max(_va.copy(mx).add(back));
+  o.min = mn; o.max = mx;
+  o.planes = [
+    { n: new V(-1, 0, 0), d: -mn.x }, { n: new V(1, 0, 0), d: mx.x },
+    { n: new V(0, -1, 0), d: -mn.y }, { n: new V(0, 1, 0), d: mx.y },
+    { n: new V(0, 0, -1), d: -mn.z }, { n: new V(0, 0, 1), d: mx.z },
+  ].filter(P => P.n.dot(d.wn) > -0.5).map(P => Object.assign(P, { prop: o, dust: d.paper ? [0.95, 0.95, 0.95] : [0.85, 0.84, 0.8] }));
+  return o;
+}
+const PROPS = [];
+const OBSTACLES = PROPS;
+function buildProps() {
+  for (const o of PROPS) if (!o.broken) for (const e of o.ents) e.part.el.remove();
+  PROPS.length = 0;
+  if (stage.id === 'room') PROP_DEFS.forEach(d => PROPS.push(makeProp(d)));
+}
 const inBox = (p, o) => p.x > o.min.x && p.x < o.max.x && p.y > o.min.y && p.y < o.max.y && p.z > o.min.z && p.z < o.max.z;
 
 /* ---------- 割れる窓ガラス（ふつうの部屋・奥の壁） ---------- */
@@ -961,10 +1059,10 @@ function applyStage(id) {
   lampEl.style.display = stage.light === 'lamp' ? '' : 'none';
   bbEl.style.background = stage.baseboard;
   const room = stage.id === 'room';
-  WIN.on = AC_BOX.on = room;
+  WIN.on = room;
   WIN.canvas.style.display = room ? '' : 'none';
-  acPart.el.style.display = room ? '' : 'none';
   winReset();
+  buildProps();
   PLANES[0].dust = stage.dust.floor; PLANES[1].dust = stage.dust.back;
   PLANES[2].dust = PLANES[3].dust = stage.dust.side;
   try { localStorage.setItem('kagu-stage', stage.id); } catch (e) { /* ignore */ }
@@ -1369,12 +1467,13 @@ class Body {
     const wl = w.len();
     if (wl > 1e-6) { _axis.copy(w).mul(1 / wl); _q.axisAngle(_axis, wl * dt); this.q.premul(_q).norm(); }
     this.updateCorners();
+    // 壁掛けの物を先に（壁の中まで伸びた箱なので、壁より先に押し戻して当たりを取る）
+    for (let i = 0; i < OBSTACLES.length; i++) this.collideBox(OBSTACLES[i]);
     for (let i = 0; i < PLANES.length; i++) {
       const P = PLANES[i];
       if (P.back && WIN.on && this.windowPass()) continue;
       this.collide(P);
     }
-    for (let i = 0; i < OBSTACLES.length; i++) this.collideBox(OBSTACLES[i]);
   }
   /* 窓ガラスの穴を通り抜けるか / 勢いよく当たってガラスを割るか */
   windowPass() {
@@ -1648,6 +1747,7 @@ function mainImpact(b, imp) {
   Snd.hit(def.snd, s, pan, 0, b.size);
   const dmg = Math.pow(Math.max(0, s - 4), 1.4);
 
+  if (imp.plane.prop) propHit(imp.plane.prop, imp, b);
   const glassPane = imp.plane.back && WIN.on && winPaneAt(imp.point.x, imp.point.y);
   if (glassPane) {
     // 割れるほどではないけど、ガラスにヒビ
@@ -1800,8 +1900,98 @@ function windowSmash(b, pn, x, y, sp, thr) {
   if (pn.gone) screenFlash(0.2);
 }
 
+/* 壁掛けの物（エアコン・時計など）に当たった */
+function propHit(o, imp, b) {
+  if (o.broken || b.chip || b.paper) return;
+  const d = o.def, s = imp.speed, pan = clamp(imp.point.x / 4, -1, 1);
+  const mass = b.main ? b.item.def.mass : 0.3;
+  const dmg = Math.max(0, s - 3) * Math.sqrt(clamp(mass, 0.1, 12));
+  if (dmg < 0.5) return;
+  const dealt = Math.min(o.hp, dmg);
+  o.hp -= dmg;
+  addYen(d.price * dealt / o.maxHp, imp.point);
+  relieve(dealt / o.maxHp * 3);
+  if (o.hp <= 0) { propBreak(o, imp, b); return; }
+
+  Snd.hit(d.snd, s, pan, 0, 0.3);
+  if (d.id === 'ac') {
+    const shell = o.ents.find(e => e.part.core);
+    if (shell) dentPart(shell.part, shell.lq, shell.lp, imp.point, imp.normal.clone().mul(-1), dmg * 2, dmg > 10 ? 2 : 0);
+    spawnChips(imp.point, imp.normal.clone().mul(1.5), PROP_MAT.acShell, Math.round(2 + dmg * 0.2), 0.03, 2);
+    // 強めに当たったらルーバーやパネルが外れる
+    if (dmg > 6) {
+      const loose = o.ents.find(e => !e.part.core);
+      if (loose) {
+        o.ents.splice(o.ents.indexOf(loose), 1);
+        unShade(loose.part);
+        const db = entryToDebris(loose.part, loose.lp, loose.lq);
+        db.vel.copy(d.wn).mul(rand(1, 2.5)).add(_va.randDir().mul(1.5));
+        db.ang.randDir().mul(rand(5, 12));
+      }
+    }
+    if (dmg > 8) { sparkBurst(imp.point, 18, true); Snd.zap(pan, 0.5); }
+  } else if (d.tilt) {
+    // ガタッと傾く
+    o.tiltA = clamp(o.tiltA + rand(0.12, 0.35) * (Math.random() < 0.5 ? -1 : 1), -0.9, 0.9);
+    for (const e of o.ents) {
+      e.lq.mulQ(e.q0, _qa.euler(0, 0, o.tiltA));
+      placePart(e.part, e.lp, e.lq, 1, QI, e.lq);
+    }
+    if (d.glass) winLikeCrack(o);
+  }
+  if (s > 7) popText(pick(HIT_WORDS), imp.point, 'hit');
+}
+/* 額縁・時計のガラスにヒビ（表面に白い線の装飾を足す） */
+function winLikeCrack(o) {
+  const e = o.ents[0], f = e && e.part.faces.find(ff => ff.m.tex);
+  if (!f || f.decals > 4) return;
+  const el = document.createElement('div'); el.className = 'glasscrack';
+  el.style.left = rand(15, 65).toFixed(0) + '%'; el.style.top = rand(15, 65).toFixed(0) + '%';
+  el.style.transform = `rotate(${rand(0, 360).toFixed(0)}deg)`;
+  f.el.appendChild(el); f.decals++;
+}
+function propBreak(o, imp, b) {
+  const d = o.def, s = imp.speed, pan = clamp(imp.point.x / 4, -1, 1);
+  o.broken = true; o.on = false;
+  const center = d.pos.clone().addS(d.wn, 0.1);
+  for (const e of o.ents) {
+    unShade(e.part);
+    const db = entryToDebris(e.part, e.lp, e.lq);
+    db.vel.copy(b.vel).mul(0.25).addS(d.wn, rand(0.8, 2.2)).add(_va.randDir().mul(rand(0.5, 1.8)));
+    db.ang.randDir().mul(rand(3, 10));
+    if (d.paper) { db.paper = true; db.snd = 'soft'; }
+    if (d.electric && e.part.core) db.sparkT = rand(2, 4);
+  }
+  const outV = d.wn.clone().mul(1.2);
+  if (d.glass) spawnChips(center, outV, MAT.glassClear, 12, 0.04, 3);
+  if (d.id === 'ac') {
+    spawnChips(center, outV, PROP_MAT.acShell, 14, 0.04, 4);
+    spawnChips(center, outV, MAT.pcb, 6, 0.03, 3);
+    sparkBurst(center, 60, true);
+    sparks.emit(center.x, center.y, center.z, 0, 0, 0, 0.18, 0.55, 0.8, 1, 0.9, 1.6, 4);
+    Snd.zap(pan, 1);
+    dustBurst(center, null, 30, [0.9, 0.9, 0.92]);
+  } else if (d.paper) {
+    spawnShreds(center, 10);
+  } else {
+    spawnChips(center, outV, PROP_MAT.wood, 5, 0.03, 2.5);
+    dustBurst(center, null, 12, [0.9, 0.88, 0.85]);
+  }
+  if (d.paper) Snd.hit('soft', 12, pan);
+  else Snd.crash(d.glass ? 'glass' : d.snd, Math.max(s, 10), pan, !!d.big);
+  const glassy = !!d.glass;
+  popText(d.word || pick(glassy ? GLASS_WORDS : BREAK_WORDS), new V(center.x, center.y + 0.35, center.z), 'break' + (glassy ? ' glass' : ''));
+  shake += d.big ? 0.5 : 0.2;
+  if (d.big) { screenFlash(0.3); slowT = 0.35; }
+  brokenCount++;
+  relieve(d.relief || 3);
+  updateHUD();
+  enforceLimit();
+}
+
 function debrisImpact(b, imp) {
   b.dirty = true;
+  if (imp.plane.prop) propHit(imp.plane.prop, imp, b);
   if (imp.speed < 2.5) return;
   const now = performance.now();
   if (now - lastDebrisSnd < 30) return;
@@ -1957,6 +2147,7 @@ function clearAll() {
   while (bodies.length) removeBodyAt(0);
   SURFACES.forEach(s => s.reset());
   winReset();
+  buildProps();
   PSYS.forEach(p => p.clear());
   fxLayer.innerHTML = '';
 }
