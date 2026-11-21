@@ -353,6 +353,24 @@ body.slowmo #vignette { opacity: 1; }
 .big-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #6d0b0b; }
 .big-btn:disabled { filter: grayscale(.8); opacity: .7; cursor: wait; }
 .note { font-size: 11px; opacity: .5; margin-top: 12px; }
+.stage-pick { margin: 0 auto 18px; }
+.stage-label { font-size: 12px; font-weight: 800; opacity: .7; margin-bottom: 6px; letter-spacing: .1em; }
+.stages { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.stage {
+  display: flex; align-items: center; gap: 6px;
+  font: inherit; font-size: 14px; font-weight: 800; color: #fff;
+  background: rgba(255, 255, 255, .06);
+  border: 2px solid rgba(255, 255, 255, .18);
+  border-radius: 10px; padding: 8px 14px; cursor: pointer;
+}
+.stage .ic { font-size: 20px; line-height: 1; }
+.stage:hover { background: rgba(255, 255, 255, .12); }
+.stage.on { border-color: #ffd84a; background: rgba(255, 216, 74, .16); color: #ffd84a; }
+.f.lamp {
+  border-radius: 50%;
+  background: radial-gradient(circle, #fffef8 0%, #fff6e0 60%, #eadfc6 100%);
+  box-shadow: 0 0 60px 24px rgba(255, 246, 225, .55);
+}
 .relief-title { color: #7dffb0 !important; -webkit-text-stroke-color: #0a6b38 !important; text-shadow: 0 6px 0 #03331a !important; }
 .result { display: flex; justify-content: center; gap: 24px; margin-bottom: 22px; }
 .result div { display: flex; flex-direction: column; }
@@ -423,6 +441,8 @@ body.touch #reticle { scale: 2; }
   .howto { font-size: 12px; line-height: 1.6; margin-bottom: 10px; }
   .big-btn { font-size: 18px; padding: 8px 32px; }
   .note { margin-top: 6px; }
+  .stage-pick { margin-bottom: 10px; }
+  .stage { padding: 5px 10px; font-size: 13px; }
 }
 
 @media (max-width: 640px) {

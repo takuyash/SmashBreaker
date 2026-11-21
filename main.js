@@ -429,8 +429,16 @@ class Surface {
     const c = this.canvas = document.createElement('canvas');
     c.width = Math.round(w * ppm); c.height = Math.round(h * ppm);
     this.ctx = c.getContext('2d', { willReadFrequently: true });
-    painter(this.ctx, c.width, c.height, ppm);
-    this.base = this.ctx.getImageData(0, 0, c.width, c.height);
+    if (painter) this.paint(painter);
+  }
+  paint(painter) {
+    const c = this.canvas, ctx = this.ctx;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic'; ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
+    ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; ctx.shadowColor = 'rgba(0,0,0,0)';
+    ctx.clearRect(0, 0, c.width, c.height);
+    painter(ctx, c.width, c.height, this.ppm);
+    this.base = ctx.getImageData(0, 0, c.width, c.height);
   }
   reset() { this.ctx.putImageData(this.base, 0, 0); }
   crack(mx, my, k) {
@@ -546,10 +554,240 @@ function paintConcreteWall(dark) {
     ctx.fillStyle = gx; ctx.fillRect(0, 0, w, h);
   };
 }
-const floorS = new Surface(8, 10, 110, paintFloor);
-const backS = new Surface(8, 5, 180, paintBricks);
-const leftS = new Surface(10, 5, 100, paintConcreteWall(false));
-const rightS = new Surface(10, 5, 100, paintConcreteWall(true));
+/* ---------- ふつうの部屋 ---------- */
+function rrect(ctx, x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function paintWoodFloor(ctx, w, h, p) {
+  const pw = 0.16 * p;
+  for (let x = 0; x < w; x += pw) {
+    let y = -rand(0, 1.6) * p;
+    while (y < h) {
+      const len = rand(1.0, 1.9) * p;
+      ctx.fillStyle = `hsl(${rand(24, 32).toFixed(0)},${rand(38, 52).toFixed(0)}%,${rand(32, 43).toFixed(0)}%)`;
+      ctx.fillRect(x, y, pw, len);
+      ctx.strokeStyle = 'rgba(60,35,15,0.2)'; ctx.lineWidth = 1;
+      for (let k = 0; k < 3; k++) {
+        const gx = x + rand(2, pw - 2);
+        ctx.beginPath(); ctx.moveTo(gx, y);
+        ctx.bezierCurveTo(gx + rand(-3, 3), y + len * 0.33, gx + rand(-3, 3), y + len * 0.66, gx + rand(-2, 2), y + len);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(30,18,8,0.6)'; ctx.fillRect(x, y, pw, 1.5);
+      y += len;
+    }
+    ctx.fillStyle = 'rgba(30,18,8,0.55)'; ctx.fillRect(x, 0, 1.5, h);
+  }
+  paintNoise(ctx, w, h, 10);
+  // ラグ
+  const rw = 3.4 * p, rh = 2.6 * p, rx = 4 * p - rw / 2, ry = 5.6 * p - rh / 2;
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 0.06 * p;
+  rrect(ctx, rx, ry, rw, rh, 0.08 * p); ctx.fillStyle = '#7d2f35'; ctx.fill();
+  ctx.restore();
+  rrect(ctx, rx + 0.18 * p, ry + 0.18 * p, rw - 0.36 * p, rh - 0.36 * p, 0.05 * p);
+  ctx.strokeStyle = '#e3c58a'; ctx.lineWidth = 0.05 * p; ctx.stroke();
+  rrect(ctx, rx + 0.32 * p, ry + 0.32 * p, rw - 0.64 * p, rh - 0.64 * p, 0.04 * p);
+  ctx.fillStyle = '#2f3d5c'; ctx.fill();
+  ctx.save(); ctx.translate(4 * p, 5.6 * p);
+  for (let i = 3; i >= 1; i--) {
+    ctx.beginPath(); ctx.moveTo(0, -i * 0.22 * p); ctx.lineTo(i * 0.32 * p, 0); ctx.lineTo(0, i * 0.22 * p); ctx.lineTo(-i * 0.32 * p, 0); ctx.closePath();
+    ctx.fillStyle = i % 2 ? '#c9a05a' : '#7d2f35'; ctx.fill();
+  }
+  ctx.restore();
+  ctx.fillStyle = 'rgba(240,225,200,0.7)';
+  for (const fy of [ry - 0.06 * p, ry + rh]) for (let x = rx + 0.04 * p; x < rx + rw - 0.04 * p; x += 0.05 * p) ctx.fillRect(x, fy, 0.015 * p, 0.06 * p);
+  paintNoise(ctx, w, h, 6);
+  // 照明の映り込み
+  const sh = ctx.createRadialGradient(4 * p, 4.6 * p, 0, 4 * p, 4.6 * p, 3.5 * p);
+  sh.addColorStop(0, 'rgba(255,245,225,0.16)'); sh.addColorStop(1, 'rgba(255,245,225,0)');
+  ctx.fillStyle = sh; ctx.fillRect(0, 0, w, h);
+  const g = ctx.createLinearGradient(0, 0, 0, 1.0 * p);
+  g.addColorStop(0, 'rgba(0,0,0,0.35)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, 1.0 * p);
+  for (const side of [0, 1]) {
+    const gx = ctx.createLinearGradient(side ? w : 0, 0, side ? w - 0.7 * p : 0.7 * p, 0);
+    gx.addColorStop(0, 'rgba(0,0,0,0.3)'); gx.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gx; ctx.fillRect(0, 0, w, h);
+  }
+}
+function paintWallpaperBase(ctx, w, h, p) {
+  ctx.fillStyle = '#e6dcc8'; ctx.fillRect(0, 0, w, h);
+  const sw = 0.2 * p;
+  ctx.fillStyle = 'rgba(190,170,140,0.16)';
+  for (let x = 0; x < w; x += sw * 2) ctx.fillRect(x, 0, sw, h);
+  ctx.fillStyle = 'rgba(170,145,110,0.22)';
+  for (let row = 0, y = 0.15 * p; y < h; row++, y += 0.3 * p)
+    for (let x = (row % 2) * 0.2 * p; x < w; x += 0.4 * p) {
+      ctx.beginPath(); ctx.moveTo(x, y - 0.03 * p); ctx.lineTo(x + 0.02 * p, y); ctx.lineTo(x, y + 0.03 * p); ctx.lineTo(x - 0.02 * p, y); ctx.closePath(); ctx.fill();
+    }
+  paintNoise(ctx, w, h, 8);
+}
+function paintBaseboard(ctx, w, h, p) {
+  const bh = 0.1 * p;
+  ctx.fillStyle = '#6b4a30'; ctx.fillRect(0, h - bh, w, bh);
+  ctx.fillStyle = 'rgba(255,230,200,0.25)'; ctx.fillRect(0, h - bh, w, 0.012 * p);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(0, h - bh - 0.015 * p, w, 0.015 * p);
+}
+function paintFrame(ctx, x, y, fw, fh, p, inner) {
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 0.05 * p; ctx.shadowOffsetY = 0.02 * p;
+  ctx.fillStyle = '#5a3a22'; ctx.fillRect(x, y, fw, fh);
+  ctx.restore();
+  const m = 0.05 * p;
+  ctx.fillStyle = '#f3efe6'; ctx.fillRect(x + m, y + m, fw - m * 2, fh - m * 2);
+  ctx.save(); ctx.beginPath(); ctx.rect(x + m * 2, y + m * 2, fw - m * 4, fh - m * 4); ctx.clip();
+  inner(x + m * 2, y + m * 2, fw - m * 4, fh - m * 4);
+  ctx.restore();
+}
+function paintWallShade(ctx, w, h, p, dir) {
+  const g = ctx.createLinearGradient(0, h * 0.55, 0, h);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(40,25,10,0.28)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  const gt = ctx.createLinearGradient(0, 0, 0, h * 0.25);
+  gt.addColorStop(0, 'rgba(40,25,10,0.22)'); gt.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gt; ctx.fillRect(0, 0, w, h);
+  if (dir) {
+    const gx = ctx.createLinearGradient(dir > 0 ? w : 0, 0, dir > 0 ? 0 : w, 0);
+    gx.addColorStop(0, 'rgba(30,20,10,0.35)'); gx.addColorStop(1, 'rgba(30,20,10,0.05)');
+    ctx.fillStyle = gx; ctx.fillRect(0, 0, w, h);
+  }
+}
+function paintRoomBack(ctx, w, h, p) {
+  paintWallpaperBase(ctx, w, h, p);
+  // 窓
+  const wx = 2.8 * p, wy = 1.5 * p, ww = 2.4 * p, wh = 2.1 * p;
+  const sky = ctx.createLinearGradient(0, wy, 0, wy + wh);
+  sky.addColorStop(0, '#4f8fd6'); sky.addColorStop(1, '#bfe0f5');
+  ctx.fillStyle = sky; ctx.fillRect(wx, wy, ww, wh);
+  for (const [cx, cy, s] of [[3.3, 1.9, 1], [4.6, 2.2, 0.8], [3.9, 2.6, 0.6]]) {
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    for (const [ox, oy, r] of [[0, 0, 0.16], [0.18, -0.05, 0.2], [0.38, 0, 0.15], [0.2, 0.06, 0.16]]) {
+      ctx.beginPath(); ctx.arc((cx + ox * s) * p, (cy + oy * s) * p, r * s * p, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.fillStyle = '#8fa3a8';
+  for (let x = wx; x < wx + ww; x += rand(0.2, 0.4) * p) { const bh = rand(0.2, 0.6) * p; ctx.fillRect(x, wy + wh - bh, rand(0.15, 0.3) * p, bh); }
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.beginPath(); ctx.moveTo(wx + 0.3 * p, wy); ctx.lineTo(wx + 0.7 * p, wy); ctx.lineTo(wx + 0.2 * p, wy + wh); ctx.lineTo(wx - 0.2 * p, wy + wh); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#f5f3ee'; ctx.lineWidth = 0.08 * p; ctx.strokeRect(wx, wy, ww, wh);
+  ctx.lineWidth = 0.05 * p;
+  ctx.beginPath(); ctx.moveTo(wx + ww / 2, wy); ctx.lineTo(wx + ww / 2, wy + wh); ctx.stroke();
+  ctx.fillStyle = '#f5f3ee'; ctx.fillRect(wx - 0.12 * p, wy + wh, ww + 0.24 * p, 0.08 * p);
+  // カーテン
+  ctx.fillStyle = '#555'; ctx.fillRect(wx - 0.7 * p, wy - 0.25 * p, ww + 1.4 * p, 0.04 * p);
+  for (const side of [-1, 1]) {
+    const cw = 0.75 * p, x0 = side < 0 ? wx - 0.6 * p : wx + ww + 0.6 * p - cw;
+    const top = wy - 0.22 * p, bot = wy + wh + 0.35 * p;
+    const cg = ctx.createLinearGradient(x0, 0, x0 + cw, 0);
+    for (let i = 0; i <= 6; i++) cg.addColorStop(i / 6, i % 2 ? '#6f9e8a' : '#8fbca7');
+    ctx.fillStyle = cg;
+    ctx.beginPath(); ctx.moveTo(x0, top); ctx.lineTo(x0 + cw, top);
+    ctx.lineTo(x0 + cw + side * 0.04 * p, bot); ctx.lineTo(x0 + side * 0.04 * p, bot); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x0, bot - 0.03 * p, cw, 0.03 * p);
+  }
+  // 額縁（山の絵）
+  paintFrame(ctx, 0.8 * p, 2.0 * p, 1.2 * p, 0.85 * p, p, (x, y, fw, fh) => {
+    const g = ctx.createLinearGradient(0, y, 0, y + fh); g.addColorStop(0, '#f4c27a'); g.addColorStop(1, '#f7e2b5');
+    ctx.fillStyle = g; ctx.fillRect(x, y, fw, fh);
+    ctx.fillStyle = '#e8743b'; ctx.beginPath(); ctx.arc(x + fw * 0.7, y + fh * 0.4, fh * 0.14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#4c6b5a'; ctx.beginPath(); ctx.moveTo(x, y + fh); ctx.lineTo(x + fw * 0.35, y + fh * 0.35); ctx.lineTo(x + fw * 0.7, y + fh); ctx.fill();
+    ctx.fillStyle = '#35503f'; ctx.beginPath(); ctx.moveTo(x + fw * 0.4, y + fh); ctx.lineTo(x + fw * 0.75, y + fh * 0.55); ctx.lineTo(x + fw * 1.1, y + fh); ctx.fill();
+  });
+  // 時計
+  const cx = 6.7 * p, cy = 1.7 * p, r = 0.3 * p;
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 0.05 * p; ctx.shadowOffsetY = 0.02 * p;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = '#3b3b3b'; ctx.fill(); ctx.restore();
+  ctx.beginPath(); ctx.arc(cx, cy, r * 0.88, 0, Math.PI * 2); ctx.fillStyle = '#fbfaf6'; ctx.fill();
+  ctx.fillStyle = '#333';
+  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; ctx.fillRect(cx + Math.cos(a) * r * 0.75 - 2, cy + Math.sin(a) * r * 0.75 - 2, 4, 4); }
+  ctx.strokeStyle = '#222'; ctx.lineCap = 'round';
+  ctx.lineWidth = 0.025 * p; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(-2.2) * r * 0.45, cy + Math.sin(-2.2) * r * 0.45); ctx.stroke();
+  ctx.lineWidth = 0.015 * p; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(-0.5) * r * 0.7, cy + Math.sin(-0.5) * r * 0.7); ctx.stroke();
+  // コンセント
+  ctx.fillStyle = '#f4f2ec'; ctx.fillRect(1.6 * p, h - 0.42 * p, 0.08 * p, 0.12 * p);
+  ctx.fillStyle = '#555'; ctx.fillRect(1.625 * p, h - 0.39 * p, 0.008 * p, 0.022 * p); ctx.fillRect(1.645 * p, h - 0.39 * p, 0.008 * p, 0.022 * p);
+  paintBaseboard(ctx, w, h, p);
+  paintWallShade(ctx, w, h, p, 0);
+}
+function paintRoomLeft(ctx, w, h, p) {
+  // canvas x = 5 - z（左端が手前）
+  paintWallpaperBase(ctx, w, h, p);
+  // ドア
+  const dx = 3.6 * p, dw = 0.9 * p, dh = 2.0 * p, dy = h - dh;
+  ctx.fillStyle = '#4a3220'; ctx.fillRect(dx - 0.06 * p, dy - 0.06 * p, dw + 0.12 * p, dh + 0.06 * p);
+  const dg = ctx.createLinearGradient(dx, 0, dx + dw, 0); dg.addColorStop(0, '#9a6a42'); dg.addColorStop(1, '#84573a');
+  ctx.fillStyle = dg; ctx.fillRect(dx, dy, dw, dh);
+  ctx.strokeStyle = 'rgba(50,30,15,0.5)'; ctx.lineWidth = 0.015 * p;
+  ctx.strokeRect(dx + 0.12 * p, dy + 0.15 * p, dw - 0.24 * p, 0.75 * p);
+  ctx.strokeRect(dx + 0.12 * p, dy + 1.05 * p, dw - 0.24 * p, 0.8 * p);
+  ctx.fillStyle = '#d8c070'; ctx.beginPath(); ctx.arc(dx + dw - 0.1 * p, dy + 1.0 * p, 0.035 * p, 0, Math.PI * 2); ctx.fill();
+  ctx.fillRect(dx + dw - 0.22 * p, dy + 0.99 * p, 0.12 * p, 0.02 * p);
+  // スイッチ
+  ctx.fillStyle = '#f6f4ee'; ctx.fillRect(dx + dw + 0.15 * p, h - 1.3 * p, 0.08 * p, 0.12 * p);
+  ctx.fillStyle = '#ccc'; ctx.fillRect(dx + dw + 0.165 * p, h - 1.28 * p, 0.05 * p, 0.035 * p);
+  // カレンダー
+  const kx = 6.8 * p, ky = h - 2.3 * p;
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(kx + 0.02 * p, ky + 0.02 * p, 0.5 * p, 0.7 * p);
+  ctx.fillStyle = '#fff'; ctx.fillRect(kx, ky, 0.5 * p, 0.7 * p);
+  ctx.fillStyle = '#8bc4e8'; ctx.fillRect(kx + 0.03 * p, ky + 0.03 * p, 0.44 * p, 0.26 * p);
+  ctx.fillStyle = '#c23'; ctx.font = `${Math.round(0.07 * p)}px sans-serif`; ctx.textAlign = 'center';
+  ctx.fillText('11', kx + 0.25 * p, ky + 0.38 * p);
+  ctx.fillStyle = '#888';
+  for (let r = 0; r < 5; r++) for (let c = 0; c < 7; c++) ctx.fillRect(kx + (0.05 + c * 0.058) * p, ky + (0.43 + r * 0.05) * p, 0.03 * p, 0.02 * p);
+  ctx.fillStyle = '#555'; ctx.beginPath(); ctx.arc(kx + 0.25 * p, ky - 0.03 * p, 0.015 * p, 0, Math.PI * 2); ctx.fill();
+  paintBaseboard(ctx, w, h, p);
+  paintWallShade(ctx, w, h, p, 1);
+}
+function paintRoomRight(ctx, w, h, p) {
+  // canvas x = z + 5（左端が奥）
+  paintWallpaperBase(ctx, w, h, p);
+  // エアコン
+  const ax = 1.35 * p, ay = 0.75 * p, aw = 1.0 * p, ah = 0.32 * p;
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.3)'; ctx.shadowBlur = 0.06 * p; ctx.shadowOffsetY = 0.03 * p;
+  rrect(ctx, ax, ay, aw, ah, 0.05 * p); ctx.fillStyle = '#f7f6f2'; ctx.fill(); ctx.restore();
+  ctx.fillStyle = '#d9d7d0'; ctx.fillRect(ax + 0.04 * p, ay + ah - 0.09 * p, aw - 0.08 * p, 0.05 * p);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)'; for (let i = 0; i < 3; i++) ctx.fillRect(ax + 0.05 * p, ay + ah - 0.08 * p + i * 0.016 * p, aw - 0.1 * p, 0.004 * p);
+  ctx.fillStyle = '#5fd18a'; ctx.beginPath(); ctx.arc(ax + aw - 0.1 * p, ay + 0.1 * p, 0.012 * p, 0, Math.PI * 2); ctx.fill();
+  // ポスター（額縁）
+  paintFrame(ctx, 1.4 * p, h - 3.1 * p, 0.9 * p, 1.2 * p, p, (x, y, fw, fh) => {
+    ctx.fillStyle = '#ffd84a'; ctx.fillRect(x, y, fw, fh);
+    ctx.fillStyle = '#e94b3c'; ctx.beginPath(); ctx.arc(x + fw / 2, y + fh * 0.4, fw * 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#222'; ctx.font = `${Math.round(0.11 * p)}px "Dela Gothic One", sans-serif`; ctx.textAlign = 'center';
+    ctx.fillText('RELAX', x + fw / 2, y + fh * 0.85);
+  });
+  // 小さい額縁ふたつ
+  for (const [fx, c1, c2] of [[3.0, '#7fb3d5', '#2e6f99'], [3.8, '#f2b5c4', '#c45a78']]) {
+    paintFrame(ctx, fx * p, h - 2.4 * p, 0.55 * p, 0.55 * p, p, (x, y, fw, fh) => {
+      ctx.fillStyle = c1; ctx.fillRect(x, y, fw, fh);
+      ctx.fillStyle = c2; ctx.beginPath(); ctx.arc(x + fw / 2, y + fh / 2, fw * 0.28, 0, Math.PI * 2); ctx.fill();
+    });
+  }
+  paintBaseboard(ctx, w, h, p);
+  paintWallShade(ctx, w, h, p, -1);
+}
+
+const STAGES = [
+  {
+    id: 'factory', name: 'ストレス発散所', icon: '🏭',
+    floor: paintFloor, back: paintBricks, left: paintConcreteWall(false), right: paintConcreteWall(true),
+    ceil: 'linear-gradient(#141518, #2a2c31)', light: 'tubes', baseboard: '#25272b',
+    dust: { floor: [0.55, 0.54, 0.5], back: [0.62, 0.42, 0.34], side: [0.55, 0.56, 0.58] },
+  },
+  {
+    id: 'room', name: 'ふつうの部屋', icon: '🛋️',
+    floor: paintWoodFloor, back: paintRoomBack, left: paintRoomLeft, right: paintRoomRight,
+    ceil: 'linear-gradient(#cfc9bd, #e9e5dc)', light: 'lamp', baseboard: '#6b4a30',
+    dust: { floor: [0.6, 0.45, 0.3], back: [0.88, 0.85, 0.78], side: [0.88, 0.85, 0.78] },
+  },
+];
+
+const floorS = new Surface(8, 10, 110);
+const backS = new Surface(8, 5, 180);
+const leftS = new Surface(10, 5, 100);
+const rightS = new Surface(10, 5, 100);
 const SURFACES = [floorS, backS, leftS, rightS];
 
 function roomFace(el, w, h, c, u, n) {
@@ -564,17 +802,17 @@ roomFace(floorS.canvas, 8, 10, new V(0, 0, 0), new V(1, 0, 0), new V(0, 1, 0));
 roomFace(backS.canvas, 8, 5, new V(0, 2.5, -5), new V(1, 0, 0), new V(0, 0, 1));
 roomFace(leftS.canvas, 10, 5, new V(-4, 2.5, 0), new V(0, 0, -1), new V(1, 0, 0));
 roomFace(rightS.canvas, 10, 5, new V(4, 2.5, 0), new V(0, 0, 1), new V(-1, 0, 0));
-{
-  const ceil = document.createElement('div'); ceil.className = 'room';
-  ceil.style.background = 'linear-gradient(#141518, #2a2c31)';
-  roomFace(ceil, 8, 10, new V(0, 5, 0), new V(1, 0, 0), new V(0, -1, 0));
-  for (const x of [-1.6, 1.6]) for (const z of [-3, 0.5]) {
-    const t = document.createElement('div'); t.className = 'tube';
-    roomFace(t, 0.12, 1.6, new V(x, 4.97, z), new V(1, 0, 0), new V(0, -1, 0));
-  }
-  const bb = document.createElement('div'); bb.style.background = '#25272b';
-  roomFace(bb, 8, 0.12, new V(0, 0.06, -4.99), new V(1, 0, 0), new V(0, 0, 1));
+const ceilEl = document.createElement('div'); ceilEl.className = 'room';
+roomFace(ceilEl, 8, 10, new V(0, 5, 0), new V(1, 0, 0), new V(0, -1, 0));
+const tubeEls = [];
+for (const x of [-1.6, 1.6]) for (const z of [-3, 0.5]) {
+  const t = document.createElement('div'); t.className = 'tube';
+  tubeEls.push(roomFace(t, 0.12, 1.6, new V(x, 4.97, z), new V(1, 0, 0), new V(0, -1, 0)));
 }
+const lampEl = document.createElement('div'); lampEl.className = 'lamp';
+roomFace(lampEl, 1.1, 1.1, new V(0, 4.96, -2.6), new V(1, 0, 0), new V(0, -1, 0));
+const bbEl = document.createElement('div');
+roomFace(bbEl, 8, 0.12, new V(0, 0.06, -4.99), new V(1, 0, 0), new V(0, 0, 1));
 
 /* ---------- physics planes ---------- */
 const PLANES = [
@@ -585,6 +823,26 @@ const PLANES = [
   { n: new V(0, 0, -1), d: -7.5, dust: [0.5, 0.5, 0.5] },
   { n: new V(0, -1, 0), d: -5, dust: [0.3, 0.3, 0.3] },
 ];
+
+/* ---------- stage switching ---------- */
+let stage = STAGES[0];
+function applyStage(id) {
+  stage = STAGES.find(s => s.id === id) || STAGES[0];
+  floorS.paint(stage.floor); backS.paint(stage.back);
+  leftS.paint(stage.left); rightS.paint(stage.right);
+  ceilEl.style.background = stage.ceil;
+  tubeEls.forEach(t => { t.style.display = stage.light === 'tubes' ? '' : 'none'; });
+  lampEl.style.display = stage.light === 'lamp' ? '' : 'none';
+  bbEl.style.background = stage.baseboard;
+  PLANES[0].dust = stage.dust.floor; PLANES[1].dust = stage.dust.back;
+  PLANES[2].dust = PLANES[3].dust = stage.dust.side;
+  try { localStorage.setItem('kagu-stage', stage.id); } catch (e) { /* ignore */ }
+}
+{
+  let saved = null;
+  try { saved = localStorage.getItem('kagu-stage'); } catch (e) { /* ignore */ }
+  applyStage(saved);
+}
 
 /* =========================================================
    Particles (Canvas2D overlay, projected with the same camera)
@@ -1572,6 +1830,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === '0') select(-1);
   else if (e.key === 'c' || e.key === 'C') clearAll();
   else if (e.key === 'm' || e.key === 'M') toggleSound();
+  else if (e.key === 's' || e.key === 'S') openStageSelect();
   else if (e.code === 'Space' && !spaceDown && $('relief').classList.contains('hidden')) {
     spaceDown = true; charging = true; chargeT = 0; power = 0; touchAim = false; e.preventDefault();
   }
@@ -1591,6 +1850,28 @@ $('btnStart').addEventListener('click', () => {
   started = true;
   $('start').classList.add('hidden');
 });
+function buildStagePicker() {
+  const box = $('stages'); box.innerHTML = '';
+  STAGES.forEach(s => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'stage' + (s === stage ? ' on' : '');
+    b.innerHTML = `<span class="ic">${s.icon}</span><span>${s.name}</span>`;
+    b.addEventListener('click', () => {
+      if (s === stage) return;
+      applyStage(s.id); clearAll(); buildStagePicker();
+    });
+    box.appendChild(b);
+  });
+}
+function openStageSelect() {
+  if (!$('relief').classList.contains('hidden')) return;
+  cancelCharge(); spaceDown = false;
+  started = false;
+  buildStagePicker();
+  $('start').classList.remove('hidden');
+}
+$('btnStage').addEventListener('click', openStageSelect);
+buildStagePicker();
 window.addEventListener('resize', resize);
 
 /* =========================================================
